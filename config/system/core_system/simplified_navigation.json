@@ -1,0 +1,93 @@
+{
+  "stage_1_navigation": {
+    "1.1_goal_and_vision": {
+      "objective": "Get therapeutic goal AND future self vision",
+      "completion_criteria": ["goal_stated", "vision_accepted"],
+      "triggers": {
+        "vague_goal": "clarify_goal",
+        "goal_stated": "build_vision",
+        "vision_accepted": "provide_psycho_education",
+        "external_blame": "redirect_internal"
+      },
+      "rag_queries": {
+        "clarify_goal": "dr_q_goal_clarification",
+        "build_vision": "dr_q_future_self_vision_building",
+        "external_blame": "dr_q_external_to_internal"
+      }
+    },
+
+    "1.1.5_psycho_education": {
+      "objective": "Provide zebra-lion brain explanation before problem inquiry",
+      "completion_criteria": ["psycho_education_provided", "education_understood"],
+      "triggers": {
+        "after_vision_accepted": "provide_psycho_education",
+        "education_provided": "advance_to_1.2",
+        "client_questions": "clarify_education"
+      },
+      "rag_queries": {
+        "provide_psycho_education": "zebra_lion_brain_explanation",
+        "clarify_education": "brain_mechanism_clarification"
+      }
+    },
+
+    "1.2_problem_and_body": {
+      "objective": "Understand problem pattern + activate body awareness",
+      "completion_criteria": ["problem_understood", "body_awareness_present"],
+      "triggers": {
+        "emotional_pattern": "how_do_you_know_inquiry",
+        "body_symptoms": "present_body_inquiry",
+        "external_focus": "redirect_to_internal_experience",
+        "analysis_mode": "thinking_to_feeling_redirect",
+        "ready_for_stage_2": "advance_to_stage_2"
+      },
+      "rag_queries": {
+        "how_do_you_know_inquiry": "dr_q_how_do_you_know_examples",
+        "present_body_inquiry": "dr_q_body_awareness_present_moment",
+        "thinking_to_feeling_redirect": "dr_q_analysis_to_feeling"
+      }
+    },
+
+    "1.3_readiness_assessment": {
+      "objective": "Assess readiness for deeper work",
+      "completion_criteria": ["rapport_established", "ready_for_intervention"],
+      "triggers": {
+        "emotional_response": "normalize_support",
+        "more_content": "continue_exploration",
+        "ready_indicators": "transition_to_stage_2",
+        "overwhelm": "stay_in_safety"
+      },
+      "rag_queries": {
+        "normalize_support": "dr_q_normalize_emotions",
+        "continue_exploration": "dr_q_what_else_exploration",
+        "transition_to_stage_2": "dr_q_transition_to_intervention"
+      }
+    }
+  },
+
+  "situation_classifications": {
+    "goal_related": ["want to feel", "need to", "hope to"],
+    "body_symptoms": ["pain", "ache", "tension", "tight", "hurt"],
+    "emotional_patterns": ["feel like", "always feel", "get anxious when"],
+    "external_blame": ["my boss", "they make me", "because of them"],
+    "analysis_mode": ["i think because", "probably", "the reason is"],
+    "crisis_indicators": ["can't handle", "want to hurt", "overwhelm"],
+    "vision_acceptance": ["yes i want that", "that sounds good", "completely"],
+    "emotional_response": ["why do i cry", "getting upset", "feeling emotional"]
+  },
+
+  "navigation_decisions": {
+    "continue_current": "stay in same substate, different approach",
+    "advance_substate": "move to next substate within stage 1",
+    "redirect_focus": "redirect within current substate objective",
+    "emergency_stabilize": "crisis or trauma stabilization",
+    "advance_to_stage_2": "ready for logical levels work"
+  },
+
+  "context_engineering_rules": {
+    "no_metaphors_unless_needed": "only use metaphors when specifically indicated by TRT methodology",
+    "present_moment_focus": "always redirect to NOW, not past analysis",
+    "body_awareness_priority": "emphasize somatic experience over cognitive",
+    "goal_outcome_clarity": "ensure both goal AND vision are established in 1.1",
+    "progression_indicators": "clear criteria for moving between substates"
+  }
+}

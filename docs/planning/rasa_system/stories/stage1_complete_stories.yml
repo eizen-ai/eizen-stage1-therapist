@@ -1,0 +1,462 @@
+# STAGE 1 COMPLETE CONVERSATION STORIES
+# RASA-style state-action pairs with multiple response branches
+# Based on actual Dr. Q sessions
+
+version: "3.1"
+
+stories:
+
+# ============================================
+# STORY 1: STATE 1.1a - GOAL INQUIRY
+# ============================================
+
+- story: goal_inquiry_clear_goal
+  steps:
+    - intent: therapist_start
+      action: action_goal_inquiry
+      # Therapist: "What do we want our time to focus on today? What do we want to get better for you? How do we want you to be when we're done?"
+
+    - intent: state_goal_emotional  # Client: "I want to feel peaceful"
+      entities:
+        - desired_state: peaceful
+      action: action_affirm_and_explore_goal
+      # Therapist: "That's right. Peaceful. And what else?"
+      next_state: "1.1b_vision_building"
+
+    - checkpoint: goal_stated
+
+- story: goal_inquiry_vague_problem
+  steps:
+    - intent: therapist_start
+      action: action_goal_inquiry
+
+    - intent: describe_problem_external  # Client: "I'm just stressed, work is hectic"
+      entities:
+        - stressor_type: work
+      action: action_redirect_to_desired_outcome
+      # Therapist: "I hear that work is hectic. And what do you want to feel instead? How do we want you to be when we're done today?"
+      next_state: "1.1a_clarify_goal"
+
+- story: goal_inquiry_thinking_mode
+  steps:
+    - intent: therapist_start
+      action: action_goal_inquiry
+
+    - intent: describe_problem_thinking  # Client: "I think it's because when I was young..."
+      entities:
+        - mode: thinking
+        - tense: past
+      action: action_redirect_to_present_feeling
+      # Therapist: "Rather than thinking about why, what are you FEELING right now? And what do you want to feel instead?"
+      next_state: "1.1a_redirect_to_goal"
+
+# ============================================
+# STORY 2: STATE 1.1b - VISION BUILDING
+# ============================================
+
+- story: vision_building_acceptance
+  steps:
+    - checkpoint: goal_stated
+    - intent: therapist_action
+      action: action_build_future_vision
+      # Therapist: "So we want you to be more peaceful, more emotionally present, lighter and easier on you, more grounded in you. Does that make sense?"
+
+    - intent: accept_vision  # Client: "Yes, completely. I want that."
+      action: action_get_permission
+      # Therapist: "Would it be okay with you?"
+      next_state: "1.1c_get_permission"
+
+- story: vision_building_clarification_needed
+  steps:
+    - checkpoint: goal_stated
+    - intent: therapist_action
+      action: action_build_future_vision
+
+    - intent: clarify_vision  # Client: "What do you mean by grounded?"
+      action: action_explain_vision_component
+      # Therapist: "Grounded in you means... [explanation]. Does that make more sense?"
+      loop_back: action_build_future_vision
+
+# ============================================
+# STORY 3: STATE 1.1c - PERMISSION
+# ============================================
+
+- story: permission_granted
+  steps:
+    - checkpoint: vision_accepted
+    - intent: therapist_action
+      action: action_get_permission
+      # Therapist: "Would it be okay with you?"
+
+    - intent: accept_vision  # Client: "Yes, it would be okay with me"
+      action: action_transition_to_problem
+      # Therapist: "Good. So with it okay with you, we get a green light. Now help me understand - what's been making it hard for you to feel that calm?"
+      next_state: "1.2a_problem_inquiry"
+
+- story: permission_hesitant
+  steps:
+    - checkpoint: vision_accepted
+    - intent: therapist_action
+      action: action_get_permission
+
+    - intent: express_resistance  # Client: "I don't know if I'm ready"
+      action: action_normalize_and_reassure
+      # Therapist: "That's okay. We'll go at your pace. What feels hard about it?"
+      next_state: "1.1b_revisit_vision"
+
+# ============================================
+# STORY 4: STATE 1.2a - PROBLEM INQUIRY
+# ============================================
+
+- story: problem_with_body_awareness
+  steps:
+    - checkpoint: permission_granted
+    - intent: therapist_action
+      action: action_problem_inquiry
+      # Therapist: "What's been happening that's making it difficult?"
+
+    - intent: describe_problem_with_body  # Client: "I'm feeling a lot of pain in my body, in my leg"
+      entities:
+        - body_words: present
+        - body_location: leg
+      action: action_inquire_body_location
+      # Therapist: "Where in the leg?"
+      next_state: "1.2b_body_location"
+
+- story: problem_external_no_body
+  steps:
+    - checkpoint: permission_granted
+    - intent: therapist_action
+      action: action_problem_inquiry
+
+    - intent: describe_problem_external  # Client: "It's work pressure and relationship issues"
+      entities:
+        - body_words: []
+        - stressor_type: [work, relationship]
+      action: action_explore_and_seek_body
+      # Therapist: "I hear work pressure and relationships. And when you think about that right now, where do you feel it in your body?"
+      next_state: "1.2b_seek_body_awareness"
+
+- story: problem_thinking_past
+  steps:
+    - checkpoint: permission_granted
+    - intent: therapist_action
+      action: action_problem_inquiry
+
+    - intent: describe_problem_thinking  # Client: "I think it's because when I was in shelter home..."
+      entities:
+        - mode: thinking
+        - tense: past
+      action: action_redirect_past_to_present_body
+      # Therapist: "I understand that happened back then. And right now, as you're telling me about it, what are you FEELING in your body right now?"
+      next_state: "1.2a_redirect_to_present"
+
+# ============================================
+# STORY 5: STATE 1.2b - BODY LOCATION
+# ============================================
+
+- story: body_location_specific
+  steps:
+    - intent: therapist_action
+      action: action_inquire_body_location
+      # Therapist: "Where in your body do you feel that?"
+
+    - intent: describe_body_location  # Client: "Right side below knee till toes"
+      entities:
+        - body_location: leg/right
+      action: action_inquire_sensation_quality
+      # Therapist: "And what kind of sensation is it? Is it an ache? A stab?"
+      next_state: "1.2b_sensation_quality"
+
+- story: body_location_vague
+  steps:
+    - intent: therapist_action
+      action: action_inquire_body_location
+
+    - intent: describe_body_location  # Client: "Just everywhere, I guess"
+      entities:
+        - body_location: vague
+      action: action_narrow_down_primary_location
+      # Therapist: "If you had to pick one main area where you feel it most, where would that be?"
+      loop_back: action_inquire_body_location
+
+- story: sensation_quality_described
+  steps:
+    - intent: therapist_action
+      action: action_inquire_sensation_quality
+
+    - intent: describe_body_sensation  # Client: "It's an ache" or "It's like a heavy weight"
+      entities:
+        - sensation_quality: [ache, heavy]
+      action: action_affirm_and_present_check
+      # Therapist: "That's right, an ache. And you're feeling some of that right now, aren't you?"
+      next_state: "1.2c_present_body_awareness"
+
+# ============================================
+# STORY 6: STATE 1.2c - PRESENT BODY AWARENESS
+# ============================================
+
+- story: present_body_aware
+  steps:
+    - intent: therapist_action
+      action: action_present_body_check
+      # Therapist: "And even talking about it right now, you're feeling some of that, aren't you?"
+
+    - intent: body_aware_present  # Client: "Yes, I can feel it right now"
+      entities:
+        - present_awareness: true
+      action: action_affirm_thats_right
+      # Therapist: "That's right."
+      next_state: "1.2d_pattern_inquiry"
+
+- story: present_body_not_aware
+  steps:
+    - intent: therapist_action
+      action: action_present_body_check
+
+    - intent: body_tense_response  # Client: "Not really" or "I don't feel it now"
+      entities:
+        - present_awareness: false
+      action: action_guide_to_notice
+      # Therapist: "Just take a moment and check inside. What do you notice in your [body_location]?"
+      loop_back: action_present_body_check
+
+- story: present_but_thinking
+  steps:
+    - intent: therapist_action
+      action: action_present_body_check
+
+    - intent: describe_problem_thinking  # Client: "Well I think it's because..."
+      entities:
+        - mode: thinking
+      action: action_redirect_thinking_to_feeling
+      # Therapist: "Rather than thinking about why, what are you FEELING right now in your body?"
+      loop_back: action_present_body_check
+
+# ============================================
+# STORY 7: STATE 1.2d - PATTERN INQUIRY
+# ============================================
+
+- story: pattern_inquiry_clear_trigger
+  steps:
+    - checkpoint: body_awareness_present
+    - intent: therapist_action
+      action: action_how_do_you_know_inquiry
+      # Therapist: "How do you know when [problem] is happening? What is it that's happening in that moment?"
+
+    - intent: describe_pattern_trigger  # Client: "When I look at calendar, I start thinking 'what if' and chest gets tight"
+      entities:
+        - trigger_type: external_event
+        - thought_pattern: identified
+        - body_response: identified
+      action: action_affirm_pattern_understood
+      # Therapist: "I can see this pattern - calendar triggers the 'what if' thoughts which create the chest pressure. That's right."
+      next_state: "1.3a_alpha_sequence_intro"
+
+- story: pattern_inquiry_relational
+  steps:
+    - checkpoint: body_awareness_present
+    - intent: therapist_action
+      action: action_how_do_you_know_inquiry
+
+    - intent: describe_relationship_conflict  # Client: "He's always complaining about how I don't call him"
+      entities:
+        - conflict_type: complaints
+      action: action_explore_internal_response
+      # Therapist: "And when he's complaining, what do you find yourself feeling? Where in your body do you feel it?"
+      next_state: "1.2c_body_in_pattern"
+
+- story: pattern_unclear
+  steps:
+    - checkpoint: body_awareness_present
+    - intent: therapist_action
+      action: action_how_do_you_know_inquiry
+
+    - intent: express_confusion  # Client: "I don't know, it just happens"
+      action: action_guide_pattern_exploration
+      # Therapist: "That's okay. Think of a recent time it happened. What was going on right before you noticed [body sensation]?"
+      loop_back: action_how_do_you_know_inquiry
+
+# ============================================
+# STORY 8: STATE 1.3a - ALPHA SEQUENCE
+# ============================================
+
+- story: alpha_sequence_intro
+  steps:
+    - checkpoint: pattern_understood
+    - intent: therapist_action
+      action: action_introduce_alpha_sequence
+      # Therapist: "So we're going to have you do a short process that starts to put your body into a state of rest..."
+      api_call: no_harm.ask_permission("alpha_sequence")
+
+    - intent: express_readiness  # Client: "Okay" or "I'm ready"
+      action: action_execute_alpha_sequence
+      # Executes: alpha_sequence.execute()
+      api_call: alpha_sequence.execute()
+      next_state: "1.3b_post_alpha"
+
+- story: alpha_sequence_hesitant
+  steps:
+    - checkpoint: pattern_understood
+    - intent: therapist_action
+      action: action_introduce_alpha_sequence
+
+    - intent: express_resistance  # Client: "I'm not sure" or "Do I have to close my eyes?"
+      action: action_normalize_and_explain
+      # Therapist: "That's okay. We'll go at your pace. This is just to help your body calm down. Would you like to try?"
+      loop_back: action_introduce_alpha_sequence
+
+- story: alpha_during_body_checks
+  steps:
+    - intent: therapist_during_alpha
+      action: action_alpha_body_check_1
+      # After breathing: "How's your body feeling now? More tense or more calm?"
+
+    - intent: body_calm_response  # Client: "More calm"
+      action: action_continue_alpha_step_2
+      # Therapist: "That's right. Now [next alpha step]..."
+      api_call: alpha_sequence.next_step()
+
+- story: alpha_still_tense
+  steps:
+    - intent: therapist_during_alpha
+      action: action_alpha_body_check_1
+
+    - intent: body_tense_response  # Client: "Still tense"
+      action: action_repeat_or_adjust_alpha
+      # Therapist: "That's okay. Let's try that again, a little slower this time..."
+      api_call: alpha_sequence.repeat_step()
+
+# ============================================
+# STORY 9: STATE 1.3b - POST-ALPHA INTEGRATION
+# ============================================
+
+- story: post_alpha_positive
+  steps:
+    - checkpoint: alpha_complete
+    - intent: therapist_action
+      action: action_post_alpha_inquiry
+      # Therapist: "And in those few short moments your eyes were closed, what did you notice within yourself?"
+
+    - intent: positive_post_alpha  # Client: "I felt free" or "Nothing was bothering me"
+      action: action_affirm_and_connect_to_vision
+      # Therapist: "You felt free. Wasn't that a nice feeling? And that's where we're headed - as a you who's free."
+      next_state: "1.3c_readiness_assessment"
+
+- story: post_alpha_neutral
+  steps:
+    - checkpoint: alpha_complete
+    - intent: therapist_action
+      action: action_post_alpha_inquiry
+
+    - intent: neutral_post_alpha  # Client: "I don't know" or "Maybe a little better"
+      action: action_normalize_and_body_check
+      # Therapist: "That's okay. How does your body feel now compared to when we started?"
+      next_state: "1.3b_body_comparison"
+
+- story: post_alpha_compare_sentiment
+  steps:
+    - intent: therapist_action
+      action: action_compare_start_to_now
+      # Therapist: "How's your body feeling now compared to when we started talking?"
+
+    - intent: body_calm_response  # Client: "Better" or "Calmer"
+      entities:
+        - improvement: true
+      action: action_affirm_progress
+      # Therapist: "That's right. You've made some good progress."
+      api_call: sentiment_tracker.is_improving()
+      next_state: "1.3c_readiness_assessment"
+
+# ============================================
+# STORY 10: STATE 1.3c - COMPLETION / READINESS
+# ============================================
+
+- story: readiness_assessment_ready
+  steps:
+    - checkpoint: alpha_complete_positive
+    - intent: therapist_action
+      action: action_assess_completeness
+      # Therapist: "Is there anything else that would be useful for me to understand about what's been difficult?"
+
+    - intent: report_no_more_issues  # Client: "No, that covers it" or "I'm ready"
+      entities:
+        - completeness: true
+      action: action_check_all_criteria
+      api_call: completion_criteria.check_all()
+      # Checks: goal ✓, vision ✓, problem ✓, body ✓, alpha ✓, improvement ✓
+      next_state: "stage_2_transition"
+
+- story: readiness_more_to_explore
+  steps:
+    - checkpoint: alpha_complete_positive
+    - intent: therapist_action
+      action: action_assess_completeness
+
+    - intent: describe_problem_external  # Client: "Well, there's also this other thing..."
+      action: action_acknowledge_and_explore
+      # Therapist: "Tell me about that..."
+      next_state: "1.2a_explore_additional_issue"
+
+- story: completion_criteria_met
+  steps:
+    - checkpoint: all_criteria_met
+    - intent: therapist_action
+      action: action_transition_to_stage_2
+      # Therapist: "Good. So whatever it is causing that [problem], we want to get that to stop. Let me help you understand something important about how your brain works..."
+      api_call: metaphors.get("bad_programming")
+      next_state: "stage_2_change_logical_levels"
+
+# ============================================
+# FALLBACK STORIES
+# ============================================
+
+- story: fallback_off_topic
+  steps:
+    - intent: off_topic
+      action: action_gentle_redirect
+      # Therapist: "I appreciate you sharing that. And coming back to what we're working on - [last relevant point]..."
+      return_to: previous_state
+
+- story: fallback_incomplete_response
+  steps:
+    - intent: incomplete_response
+      action: action_gentle_prompt
+      # Therapist: "Take your time... What are you noticing?"
+      loop_back: previous_action
+
+- story: fallback_strong_emotion
+  steps:
+    - intent: express_strong_emotion
+      entities:
+        - intensity: high
+      action: action_validate_and_ground
+      # Therapist: "That's right, there's a lot there. Just take a breath for a moment..."
+      api_call: no_harm.validate(emotion)
+      then: action_body_check
+
+# ============================================
+# INTERJECTION STORIES (Can happen anytime)
+# ============================================
+
+- story: interjection_crying
+  steps:
+    - intent: client_crying
+      action: action_normalize_tears
+      # Therapist: "This is really difficult stuff. That makes sense."
+      api_call: no_harm.normalize("crying")
+      then: continue_previous_state
+
+- story: interjection_apology
+  steps:
+    - intent: apologize_for_emotion  # Client: "Sorry for crying"
+      action: action_normalize_no_apology_needed
+      # Therapist: "No need to apologize. This is heavy stuff."
+      then: continue_previous_state
+
+- story: interjection_meta_question
+  steps:
+    - intent: seek_validation  # Client: "Is this normal?"
+      action: action_normalize_and_continue
+      # Therapist: "Absolutely. That makes complete sense given what you've been through."
+      then: continue_previous_state

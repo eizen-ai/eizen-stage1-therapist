@@ -1,0 +1,338 @@
+# CLIENT INTENTS - Based on Actual Session Transcripts
+# These are the different types of things clients say
+
+intents:
+  # ============================================
+  # GOAL & VISION INTENTS (State 1.1)
+  # ============================================
+
+  - intent: state_goal_emotional
+    examples: |
+      - I want to feel peaceful
+      - I want to feel calm
+      - I want to stop feeling anxious
+      - I need to feel more relaxed
+      - I want to be less stressed
+      - I want to feel better about myself
+    entities:
+      - desired_state: [peaceful, calm, relaxed, better]
+      - problem_state: [anxious, stressed, overwhelmed]
+
+  - intent: state_goal_relational
+    examples: |
+      - I want better relationships
+      - I want to stop disappointing people
+      - I need to set boundaries
+      - I want to feel comfortable with conflict
+    entities:
+      - goal_type: relational
+
+  - intent: accept_vision
+    examples: |
+      - Yes, that sounds exactly what I want
+      - I want that
+      - Yes, completely
+      - That would be okay with me
+      - That makes sense
+      - Yeah, I'd like that
+    entities:
+      - agreement: strong
+
+  - intent: clarify_vision
+    examples: |
+      - Can you explain more?
+      - I'm not sure I understand
+      - What do you mean by that?
+      - How would that work?
+
+  # ============================================
+  # PROBLEM DESCRIPTION INTENTS (State 1.2a)
+  # ============================================
+
+  - intent: describe_problem_external
+    examples: |
+      - It's work pressure
+      - My relationships are stressful
+      - I'm in constant hurry
+      - A lot of things are going on
+      - It's pretty hectic at work
+      - There's too much to do
+    entities:
+      - stressor_type: [work, relationship, time, responsibilities]
+      - body_words: []
+
+  - intent: describe_problem_with_body
+    examples: |
+      - I'm feeling a lot of pain in my body
+      - My chest feels tight
+      - I get this ache in my leg
+      - My shoulders are tense
+      - I feel it in my stomach
+      - There's pressure in my head
+    entities:
+      - body_location: [chest, leg, shoulders, stomach, head, throat]
+      - sensation_type: [pain, tight, ache, tense, pressure, heavy]
+      - body_words: present
+
+  - intent: describe_problem_thinking
+    examples: |
+      - I think it's because when I was young
+      - I'm overthinking everything
+      - I keep thinking about what if
+      - I think maybe it's from my childhood
+      - I'm constantly analyzing why
+      - Probably it's because of my past
+    entities:
+      - mode: thinking
+      - tense: past
+      - redirect_needed: true
+
+  # ============================================
+  # BODY AWARENESS INTENTS (State 1.2b, 1.2c)
+  # ============================================
+
+  - intent: describe_body_location
+    examples: |
+      - It's in my chest
+      - Right side below knee till toes
+      - In my mind and in my chest
+      - My right leg
+      - Upper back and shoulders
+    entities:
+      - body_location: extracted
+      - present_tense: true
+
+  - intent: describe_body_sensation
+    examples: |
+      - It's an ache
+      - It's like a heavy weight pressing down
+      - It's tight and constricted
+      - It's a stabbing pain
+      - It feels hot and burning
+      - It's numb
+    entities:
+      - sensation_quality: [ache, heavy, tight, stabbing, burning, numb]
+
+  - intent: body_aware_present
+    examples: |
+      - I can feel it right now
+      - I'm feeling that tightness right now
+      - Yes, I'm noticing it as we speak
+      - I feel it happening now
+      - It's there right now
+    entities:
+      - present_awareness: true
+      - tense: present
+
+  - intent: body_calm_response
+    examples: |
+      - It's feeling more calm
+      - I feel more relaxed
+      - The tension is less
+      - It's lighter now
+      - I feel better
+      - It's more comfortable
+    entities:
+      - improvement: true
+      - direction: positive
+
+  - intent: body_tense_response
+    examples: |
+      - It's still tense
+      - I feel more anxious
+      - It's getting worse
+      - Still the same
+      - More tight
+    entities:
+      - improvement: false
+      - direction: negative_or_same
+
+  # ============================================
+  # PATTERN & TRIGGER INTENTS (State 1.2d)
+  # ============================================
+
+  - intent: describe_pattern_trigger
+    examples: |
+      - When I look at my calendar it starts
+      - Whenever I'm stressed or overthinking it hurts
+      - When I'm triggered from my past it hurts a lot
+      - It happens when someone complains about me
+      - When I think about the trip I get anxious
+    entities:
+      - trigger_type: [external_event, thought, memory, person]
+      - temporal_pattern: identified
+
+  - intent: describe_past_coping
+    examples: |
+      - I used to tie my leg with cloth
+      - When I was in shelter home I would do this
+      - I used to avoid these situations
+      - Back then I would just shut down
+    entities:
+      - tense: past
+      - coping_strategy: mentioned
+
+  # ============================================
+  # EMOTIONAL RESPONSE INTENTS
+  # ============================================
+
+  - intent: express_strong_emotion
+    examples: |
+      - I feel SO much anger
+      - I'm REALLY stressed
+      - This is overwhelming!!!
+      - I can't take it anymore
+      - I'm so so anxious
+      - This is extremely difficult
+    entities:
+      - intensity: high
+      - emotion_markers: [CAPS, multiple_exclamations, modifiers]
+
+  - intent: express_confusion
+    examples: |
+      - I don't know where this is coming from
+      - I'm not sure why this happens
+      - I don't understand it
+      - Why do I cry every time I meet you?
+    entities:
+      - seeking: understanding
+
+  - intent: express_resistance
+    examples: |
+      - I'm not sure I'm ready
+      - This feels too hard
+      - I don't know if I can do this
+      - Maybe we should wait
+    entities:
+      - readiness: false
+      - resistance: present
+
+  - intent: express_readiness
+    examples: |
+      - I'm ready to work on this
+      - Let's do it
+      - I'm good
+      - Okay, I'm ready
+      - Yes, let's go
+      - I want to change this
+    entities:
+      - readiness: true
+      - commitment: high
+
+  # ============================================
+  # RELATIONAL INTENTS
+  # ============================================
+
+  - intent: people_pleasing_pattern
+    examples: |
+      - I need to make everyone happy
+      - I feel like I'm disappointing them
+      - I'm struggling in between people
+      - I feel stuck trying to keep everyone okay
+      - I feel like I'm letting them down
+    entities:
+      - pattern_type: people_pleasing
+      - core_issue: boundaries
+
+  - intent: describe_relationship_conflict
+    examples: |
+      - He's always complaining about me
+      - They don't get along with each other
+      - I'm in the middle
+      - My boyfriend and my friend don't like each other
+      - Everyone's upset with me
+    entities:
+      - conflict_type: [triangulation, complaints, incompatibility]
+
+  # ============================================
+  # POST-INTERVENTION INTENTS
+  # ============================================
+
+  - intent: positive_post_alpha
+    examples: |
+      - I felt free
+      - There was nothing bothering me
+      - That was amazing
+      - I feel calmer
+      - I feel peaceful
+      - That felt really good
+    entities:
+      - post_intervention_state: positive
+      - alpha_successful: true
+
+  - intent: neutral_post_alpha
+    examples: |
+      - I don't know what I felt
+      - It was okay
+      - I'm not sure
+      - Maybe a little better
+    entities:
+      - post_intervention_state: neutral
+      - needs_processing: true
+
+  # ============================================
+  # META-COMMUNICATION INTENTS
+  # ============================================
+
+  - intent: check_understanding
+    examples: |
+      - Does that make sense?
+      - Do you understand what I mean?
+      - Am I explaining this well?
+      - Is that clear?
+
+  - intent: seek_validation
+    examples: |
+      - Is that normal?
+      - Does everyone feel this way?
+      - Is something wrong with me?
+      - Why do I react like this?
+
+  - intent: report_no_more_issues
+    examples: |
+      - That covers the main issue
+      - I think that's it
+      - Nothing else right now
+      - That's all
+      - No, that's everything
+    entities:
+      - completeness: true
+      - ready_to_proceed: check
+
+  # ============================================
+  # FALLBACK INTENTS
+  # ============================================
+
+  - intent: off_topic
+    examples: |
+      - What's the weather like?
+      - How's your day?
+      - Did you watch the game?
+      - [unrelated content]
+    entities:
+      - handle: redirect_gently
+
+  - intent: incomplete_response
+    examples: |
+      - Um...
+      - I...
+      - Well...
+      - [silence]
+      - I don't know
+    entities:
+      - needs: gentle_prompt
+
+# ============================================
+# ENTITY DEFINITIONS
+# ============================================
+
+entities:
+  - body_location: chest|stomach|shoulders|head|throat|leg|back|arms
+  - sensation_type: pain|ache|tight|heavy|pressure|burning|stabbing|numb
+  - desired_state: peaceful|calm|relaxed|comfortable|grounded|present
+  - problem_state: anxious|stressed|overwhelmed|triggered|angry
+  - tense: present|past|future
+  - intensity: low|medium|high
+  - readiness: true|false
+  - improvement: true|false
+  - mode: feeling|thinking|body_aware

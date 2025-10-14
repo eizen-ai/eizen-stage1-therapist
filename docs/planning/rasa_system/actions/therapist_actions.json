@@ -1,0 +1,627 @@
+{
+  "stage_1_actions": {
+    "1.1a_goal_inquiry": {
+      "action_name": "action_goal_inquiry",
+      "state": "1.1a",
+      "trigger": "session_start OR goal_unclear",
+      "therapist_responses": {
+        "primary": "What do we want our time together to accomplish? What do we want to get better for you? How do you want to be when we're done today?",
+        "alternative_1": "What would you like to focus on in our time together? What would you like to get better?",
+        "alternative_2": "Help me understand - what brought you here today? What do we want to work on?",
+        "dr_q_exact": "What do we want our time to focus on today? What do we want to get better for you? How do we want you to be when we're done?"
+      },
+      "expected_intents": [
+        "state_goal_emotional",
+        "state_goal_relational",
+        "describe_problem_external",
+        "describe_problem_thinking"
+      ],
+      "detection_checks": {
+        "check_for_body_words": true,
+        "check_for_thinking_mode": true,
+        "check_tense": true
+      },
+      "next_actions_map": {
+        "state_goal_emotional": "action_affirm_and_explore_goal",
+        "describe_problem_external": "action_redirect_to_desired_outcome",
+        "describe_problem_thinking": "action_redirect_to_present_feeling"
+      }
+    },
+
+    "action_redirect_to_desired_outcome": {
+      "action_name": "action_redirect_to_desired_outcome",
+      "state": "1.1a",
+      "trigger": "client_describes_problem_not_goal",
+      "therapist_responses": {
+        "primary": "I hear that {problem} is happening. And what do you want to feel instead? How do we want you to be when we're done today?",
+        "with_empathy": "I can see that {problem} is really affecting you. And what do you want instead of that feeling? What would be better?",
+        "gentle": "That sounds difficult. And if we could wave a magic wand, how would you like to feel when we finish today?"
+      },
+      "variables": {
+        "problem": "extracted_from_client_message"
+      },
+      "next_actions_map": {
+        "state_goal_emotional": "action_affirm_and_explore_goal"
+      }
+    },
+
+    "action_redirect_to_present_feeling": {
+      "action_name": "action_redirect_to_present_feeling",
+      "state": "1.1a OR any_state",
+      "trigger": "client_in_thinking_mode OR client_in_past_tense",
+      "therapist_responses": {
+        "primary": "Rather than thinking about why, what are you FEELING right now?",
+        "with_body": "Rather than thinking about why, what are you FEELING right now in your body?",
+        "gentle": "I understand that happened back then. And right now, what are you noticing in yourself?",
+        "direct": "Come out of your head and into your body - what are you feeling right now?"
+      },
+      "detection_trigger": {
+        "thinking_words": ["i think", "probably", "because", "the reason is"],
+        "past_tense": ["i felt", "back then", "when i was", "at that time"]
+      },
+      "purpose": "Keep client in present moment, redirect from thinking to feeling",
+      "next_state": "continue_current_state_with_present_focus"
+    },
+
+    "action_affirm_and_explore_goal": {
+      "action_name": "action_affirm_and_explore_goal",
+      "state": "1.1a",
+      "trigger": "client_states_clear_goal",
+      "therapist_responses": {
+        "affirm": "That's right. {goal_stated}.",
+        "explore_more": "And what else? What else do you want to be different?",
+        "transition_to_vision": "So {goal_1} and {goal_2}. Let me see if I'm understanding this right..."
+      },
+      "next_action": "action_build_future_vision",
+      "completion_check": "goal_stated = true"
+    },
+
+    "1.1b_vision_building": {
+      "action_name": "action_build_future_vision",
+      "state": "1.1b",
+      "trigger": "goal_stated AND need_detailed_vision",
+      "therapist_responses": {
+        "template": "So we want you to be {vision_components}. Does that make sense?",
+        "example": "So we want you to be more peaceful, more emotionally present, lighter and easier on you, more grounded in you, not so dependent on anxiety. Does that make sense?",
+        "with_space_metaphor": "We want you to experience more space in between you and other people's stuff. So that you internally experience their stuff as being about them, not about you.",
+        "relational_boundaries": "We want you to have that range and freedom in those interactions - sometimes very caring, sometimes clear and direct, sometimes no response at all because there's nothing to say."
+      },
+      "vision_components": {
+        "if_anxious": ["peaceful", "calm", "grounded", "emotionally present"],
+        "if_people_pleasing": ["space between you and others", "their stuff is about them", "flexibility in responses"],
+        "if_triggered": ["lighter", "past no longer weighs on you", "reminders no longer trigger"],
+        "if_relationship": ["comfortable with boundaries", "not responsible for others' reactions"]
+      },
+      "api_calls": {
+        "check_metaphor_needed": "metaphors.get('space_between')",
+        "permission_check": "no_harm.ask_permission('vision')"
+      },
+      "expected_intents": [
+        "accept_vision",
+        "clarify_vision"
+      ],
+      "next_actions_map": {
+        "accept_vision": "action_get_permission",
+        "clarify_vision": "action_explain_vision_component"
+      }
+    },
+
+    "action_get_permission": {
+      "action_name": "action_get_permission",
+      "state": "1.1c",
+      "trigger": "vision_accepted",
+      "therapist_responses": {
+        "primary": "Would it be okay with you?",
+        "alternative": "Would that be alright?",
+        "with_context": "The question isn't how it's going to happen that we get you there. The question is, would it be okay with you?"
+      },
+      "api_call": "no_harm.ask_permission('proceed_with_vision')",
+      "expected_intents": [
+        "accept_vision",
+        "express_readiness",
+        "express_resistance"
+      ],
+      "next_actions_map": {
+        "accept_vision": "action_transition_to_problem",
+        "express_resistance": "action_normalize_and_reassure"
+      }
+    },
+
+    "action_transition_to_problem": {
+      "action_name": "action_transition_to_problem",
+      "state": "1.1c_to_1.2a",
+      "trigger": "permission_granted",
+      "therapist_responses": {
+        "primary": "Good. So with it okay with you, we get a green light to organize your brain towards the future you. Now help me understand - what's been making it hard for you to feel that {goal}? What's been happening?",
+        "direct": "Good. Now what's been getting in the way of you feeling {goal}? What's been happening?",
+        "gentle": "Tell me what's been difficult. What's been happening that makes it hard to feel {goal}?"
+      },
+      "next_state": "1.2a_problem_inquiry",
+      "checkpoint": "goal_and_vision_complete"
+    },
+
+    "1.2a_problem_inquiry": {
+      "action_name": "action_problem_inquiry",
+      "state": "1.2a",
+      "trigger": "permission_granted OR need_understand_problem",
+      "therapist_responses": {
+        "open_ended": "What's been happening? Tell me about it.",
+        "specific_to_goal": "What's been making it hard for you to feel {goal}?",
+        "recent_focus": "Tell me about a recent time when you felt {problem_state}. What was happening?"
+      },
+      "detection_priority": [
+        "1. Check for body_words in response",
+        "2. Check for thinking_mode",
+        "3. Check for present vs past tense",
+        "4. Identify stressor_type"
+      ],
+      "next_actions_map": {
+        "body_words_present": "action_inquire_body_location",
+        "body_words_absent": "action_explore_and_seek_body",
+        "thinking_mode": "action_redirect_past_to_present_body",
+        "past_tense": "action_redirect_past_to_present_body"
+      }
+    },
+
+    "action_explore_and_seek_body": {
+      "action_name": "action_explore_and_seek_body",
+      "state": "1.2a",
+      "trigger": "problem_described_no_body_awareness",
+      "therapist_responses": {
+        "primary": "I hear {problem_summary}. And when you think about that right now, where do you feel it in your body?",
+        "alternative": "And even as you're telling me about {problem} right now, what do you notice in your body?",
+        "direct": "Where in your body do you feel that {emotion}?"
+      },
+      "purpose": "Transition from external problem to body awareness",
+      "next_state": "1.2b_body_location",
+      "expected_intents": [
+        "describe_body_location",
+        "describe_body_sensation",
+        "express_confusion"
+      ]
+    },
+
+    "action_redirect_past_to_present_body": {
+      "action_name": "action_redirect_past_to_present_body",
+      "state": "1.2a OR any_state",
+      "trigger": "client_in_past_tense OR thinking_about_past",
+      "therapist_responses": {
+        "primary": "I understand that happened back then. And right now, as you're telling me about it, what are you FEELING in your body right now?",
+        "gentle": "That was then. Right now, in this moment, what do you notice in yourself?",
+        "direct": "Come back to right now. What are you feeling in your body right now?"
+      },
+      "detection": {
+        "past_indicators": ["when i was", "back then", "used to", "i felt"],
+        "thinking_indicators": ["i think", "probably", "because"]
+      },
+      "purpose": "Maintain present moment focus, shift to body awareness",
+      "next_state": "continue_with_present_focus"
+    },
+
+    "1.2b_body_location": {
+      "action_name": "action_inquire_body_location",
+      "state": "1.2b",
+      "trigger": "body_words_mentioned_but_location_unclear",
+      "therapist_responses": {
+        "primary": "Where in your body do you feel that?",
+        "specific": "Where in the {body_part} exactly?",
+        "dr_q_style": "Where in the life?",
+        "clarifying": "Show me - point to where you feel it."
+      },
+      "follow_up_action": "action_inquire_sensation_quality",
+      "expected_intents": [
+        "describe_body_location",
+        "describe_body_sensation"
+      ],
+      "extract_entities": [
+        "body_location",
+        "sensation_type"
+      ]
+    },
+
+    "action_inquire_sensation_quality": {
+      "action_name": "action_inquire_sensation_quality",
+      "state": "1.2b",
+      "trigger": "body_location_identified",
+      "therapist_responses": {
+        "primary": "And what kind of sensation is it? Is it an ache? A stab? Tight? Heavy?",
+        "alternative": "What's that like in your {body_location}? How would you describe it?",
+        "gentle": "Tell me what that feels like."
+      },
+      "next_action": "action_affirm_and_present_check",
+      "expected_intents": [
+        "describe_body_sensation"
+      ]
+    },
+
+    "action_affirm_and_present_check": {
+      "action_name": "action_affirm_and_present_check",
+      "state": "1.2b_to_1.2c",
+      "trigger": "body_location_and_sensation_described",
+      "therapist_responses": {
+        "affirm_then_check": "That's right, {sensation} in your {location}. And you're feeling some of that right now, aren't you?",
+        "alternative": "And even talking about it right now, you're feeling some of that, aren't you?",
+        "direct": "And right now, what's happening in your {location}?"
+      },
+      "purpose": "Affirm + anchor in present moment body awareness",
+      "next_state": "1.2c_present_body_awareness",
+      "expected_intents": [
+        "body_aware_present",
+        "body_tense_response"
+      ]
+    },
+
+    "1.2c_present_body_awareness": {
+      "action_name": "action_present_body_check",
+      "state": "1.2c",
+      "trigger": "strategic_timing OR post_intervention OR client_disconnected",
+      "when_to_use": {
+        "after_intervention": "After breathing, alpha step, any calming instruction",
+        "client_thinking": "When client goes into thinking mode",
+        "exchanges_2_plus": "When 2+ exchanges since last check",
+        "key_state": "In states 1.2c or 1.3a",
+        "transition": "Before moving to next state"
+      },
+      "when_NOT_to_use": {
+        "just_asked": "Less than 2 exchanges ago",
+        "already_in_body": "Client actively describing body sensations",
+        "would_break_flow": "Use 'That's right' affirmation instead"
+      },
+      "therapist_responses": {
+        "standard": "How's your body feeling now? More tense or more calm?",
+        "location_specific": "How's your {body_location} feeling now?",
+        "comparison": "How does that feel now compared to a moment ago?",
+        "gentle": "Just check in - what do you notice in your body right now?"
+      },
+      "expected_intents": [
+        "body_calm_response",
+        "body_tense_response",
+        "body_aware_present",
+        "describe_problem_thinking"
+      ],
+      "next_actions_map": {
+        "body_calm_response": "action_affirm_thats_right",
+        "body_tense_response": "action_guide_to_notice",
+        "describe_problem_thinking": "action_redirect_thinking_to_feeling"
+      },
+      "strategic_decision_tree": "See detection guide for full logic"
+    },
+
+    "action_affirm_thats_right": {
+      "action_name": "action_affirm_thats_right",
+      "state": "any_state",
+      "trigger": "client_in_body_awareness OR accurate_statement",
+      "therapist_responses": {
+        "standard": "That's right.",
+        "with_repeat": "That's right. {repeat_their_words}.",
+        "encouraging": "That's right. You're noticing that.",
+        "simple_yeah": "Yeah."
+      },
+      "frequency": "High - use 60%+ of time instead of asking questions",
+      "purpose": "Pacing, validation, keep flow without over-asking",
+      "next_action": "continue_or_advance_naturally"
+    },
+
+    "action_redirect_thinking_to_feeling": {
+      "action_name": "action_redirect_thinking_to_feeling",
+      "state": "any_state",
+      "trigger": "client_says_thinking_words",
+      "therapist_responses": {
+        "primary": "Rather than thinking about why, what are you FEELING right now?",
+        "with_body": "Rather than thinking, drop into your body - what are you FEELING?",
+        "gentle": "I hear you trying to figure it out. Instead of thinking, what do you notice you're feeling?",
+        "direct": "Come out of your head. What are you FEELING in your body?"
+      },
+      "detection": {
+        "thinking_words": ["i think", "probably", "because", "maybe", "the reason is"]
+      },
+      "purpose": "Maintain present moment, feeling state (not thinking)",
+      "critical": "This is core TRT - always redirect thinking to feeling"
+    },
+
+    "1.2d_pattern_inquiry": {
+      "action_name": "action_how_do_you_know_inquiry",
+      "state": "1.2d",
+      "trigger": "body_awareness_established",
+      "therapist_responses": {
+        "primary": "How do you know when you feel {problem}? What is it that's happening in that moment?",
+        "alternative": "How do you know when {trigger} is getting to you? What's happening in that moment?",
+        "dr_q_exact": "How do you know when you feel like you're disappointing him? What is it that's happening in that moment?"
+      },
+      "purpose": "Identify trigger → thought → body response pattern",
+      "expected_intents": [
+        "describe_pattern_trigger",
+        "describe_relationship_conflict",
+        "express_confusion"
+      ],
+      "next_actions_map": {
+        "describe_pattern_trigger": "action_affirm_pattern_understood",
+        "express_confusion": "action_guide_pattern_exploration"
+      }
+    },
+
+    "action_affirm_pattern_understood": {
+      "action_name": "action_affirm_pattern_understood",
+      "state": "1.2d",
+      "trigger": "pattern_clearly_described",
+      "therapist_responses": {
+        "template": "I can see this pattern - {trigger} triggers the {thought} which creates the {body_sensation}. That's right.",
+        "example": "So calendar triggers the 'what if I don't finish' thoughts which create the chest tightness. That's right.",
+        "validation": "And you're feeling that pressure to {behavior_pattern}, and that's been really heavy."
+      },
+      "purpose": "Validate pattern understanding, prepare for intervention",
+      "completion_check": {
+        "goal": true,
+        "vision": true,
+        "problem": true,
+        "body_awareness": true,
+        "pattern": true
+      },
+      "next_action": "action_introduce_alpha_sequence OR action_assess_completeness"
+    },
+
+    "1.3a_alpha_sequence": {
+      "action_name": "action_introduce_alpha_sequence",
+      "state": "1.3a",
+      "trigger": "pattern_understood AND body_awareness_present",
+      "therapist_responses": {
+        "full_intro": "So what we're going to do is we're going to have you do a short little process with me that starts to put your body into a state of rest. We want your body in a state of rest because resting is what enables inside healing to accelerate.",
+        "shorter": "We're going to do a short process to help your body get into a rest state. This will help with the healing process.",
+        "permission_check": "Would you be willing to try that?"
+      },
+      "api_call": "alpha_sequence.execute()",
+      "framework_file": "frameworks/alpha_sequence.json",
+      "expected_intents": [
+        "express_readiness",
+        "express_resistance",
+        "clarify_vision"
+      ],
+      "next_actions_map": {
+        "express_readiness": "action_execute_alpha_sequence",
+        "express_resistance": "action_normalize_and_explain"
+      }
+    },
+
+    "action_execute_alpha_sequence": {
+      "action_name": "action_execute_alpha_sequence",
+      "state": "1.3a",
+      "trigger": "client_ready_for_alpha",
+      "steps": [
+        {
+          "step": 1,
+          "action": "alpha_step_1_jaw",
+          "check_after": "action_alpha_body_check_1"
+        },
+        {
+          "step": 2,
+          "action": "alpha_step_2_tongue",
+          "check_after": "action_alpha_body_check_2"
+        },
+        {
+          "step": 3,
+          "action": "alpha_step_3_breathing",
+          "check_after": "action_alpha_body_check_3",
+          "critical_check": true
+        },
+        {
+          "step": 4,
+          "action": "alpha_step_4_peripheral",
+          "check_after": "action_alpha_body_check_4"
+        },
+        {
+          "step": 5,
+          "action": "alpha_step_5_bird_eye_view",
+          "uses_metaphor": "under_stress_birds_eye",
+          "check_after": "action_post_alpha_inquiry"
+        },
+        {
+          "step": 6,
+          "action": "alpha_step_6_reassociate"
+        }
+      ],
+      "api_call": "alpha_sequence.execute_all_steps()",
+      "framework_file": "frameworks/alpha_sequence.json",
+      "body_checks": {
+        "frequency": "After each major step (3-4 times)",
+        "question": "How's your body feeling now? More tense or more calm?",
+        "if_calm": "continue_next_step",
+        "if_tense": "repeat_step_or_adjust"
+      },
+      "next_state": "1.3b_post_alpha"
+    },
+
+    "action_alpha_body_check": {
+      "action_name": "action_alpha_body_check",
+      "state": "1.3a_during",
+      "trigger": "after_alpha_step",
+      "therapist_responses": {
+        "standard": "How's your body feeling now? More tense or more calm?",
+        "after_breathing": "And as you're beginning to breathe in this way, just check inside your body. How's your body feeling now?",
+        "after_peripheral": "And as you're aware of more and more of the space, check inside your body once again. How's your body feeling now?"
+      },
+      "expected_intents": [
+        "body_calm_response",
+        "body_tense_response"
+      ],
+      "next_actions_map": {
+        "body_calm_response": "continue_next_alpha_step",
+        "body_tense_response": "repeat_or_adjust_alpha_step"
+      }
+    },
+
+    "1.3b_post_alpha": {
+      "action_name": "action_post_alpha_inquiry",
+      "state": "1.3b",
+      "trigger": "alpha_sequence_complete",
+      "therapist_responses": {
+        "primary": "And in those few short moments that your eyes were closed, what did you notice within yourself?",
+        "alternative": "What did you notice when your eyes were closed?",
+        "simple": "What did you notice?"
+      },
+      "expected_intents": [
+        "positive_post_alpha",
+        "neutral_post_alpha",
+        "express_confusion"
+      ],
+      "next_actions_map": {
+        "positive_post_alpha": "action_affirm_and_connect_to_vision",
+        "neutral_post_alpha": "action_normalize_and_body_check"
+      }
+    },
+
+    "action_affirm_and_connect_to_vision": {
+      "action_name": "action_affirm_and_connect_to_vision",
+      "state": "1.3b",
+      "trigger": "positive_post_alpha_response",
+      "therapist_responses": {
+        "template": "You felt {their_description}. Wasn't that a nice feeling? And that's where we're headed - as a you who's {vision_quality}.",
+        "example": "You felt free. Wasn't that a nice feeling? And that's where we're headed - as a you who's free.",
+        "with_affirmation": "That's right. {their_description}. And that's the direction we're moving towards."
+      },
+      "purpose": "Link positive experience to future vision",
+      "next_action": "action_compare_start_to_now"
+    },
+
+    "action_compare_start_to_now": {
+      "action_name": "action_compare_start_to_now",
+      "state": "1.3b",
+      "trigger": "post_alpha_processed",
+      "therapist_responses": {
+        "primary": "How's your body feeling now compared to when we started talking?",
+        "alternative": "Compare how you feel now to when you first came in. What's different?",
+        "direct": "Better now? Or about the same?"
+      },
+      "api_call": "sentiment_tracker.compare_start_to_now()",
+      "expected_intents": [
+        "body_calm_response",
+        "neutral_post_alpha"
+      ],
+      "next_action": "action_affirm_progress OR action_assess_completeness"
+    },
+
+    "1.3c_readiness": {
+      "action_name": "action_assess_completeness",
+      "state": "1.3c",
+      "trigger": "alpha_complete AND improvement_noted",
+      "therapist_responses": {
+        "primary": "Is there anything else that would be useful for me to understand about what's been difficult?",
+        "alternative": "Before we work on changing this pattern, is there anything else I should know?",
+        "direct": "Anything else?"
+      },
+      "completion_criteria": {
+        "goal_stated": "check_variable",
+        "vision_accepted": "check_variable",
+        "problem_identified": "check_variable",
+        "body_awareness_present": "check_variable",
+        "alpha_complete": "check_variable",
+        "sentiment_improved": "sentiment_tracker.is_improving()"
+      },
+      "api_call": "completion_criteria.check_all()",
+      "next_actions_map": {
+        "all_criteria_met + no_more_issues": "action_transition_to_stage_2",
+        "more_to_explore": "action_acknowledge_and_explore"
+      }
+    },
+
+    "action_transition_to_stage_2": {
+      "action_name": "action_transition_to_stage_2",
+      "state": "1.3c_to_stage_2",
+      "trigger": "all_stage_1_criteria_met",
+      "therapist_responses": {
+        "primary": "Good. So whatever it is that's causing that {problem}, we want to get that to stop. Before we work on the specific pattern, let me help you understand something important about how your brain works with this...",
+        "with_recap": "So we want you to be {vision}. And we understand that {problem_pattern} has been getting in the way. Before we change that, let me explain how this works in your brain...",
+        "direct": "Good. Now let's talk about how we're going to change this..."
+      },
+      "api_calls": {
+        "metaphor_1": "metaphors.get('bad_programming')",
+        "metaphor_2": "metaphors.get('emotional_brain_short_circuit')",
+        "metaphor_3": "metaphors.get('happening_vs_happened')"
+      },
+      "next_state": "stage_2_change_logical_levels",
+      "note": "Stage 2 is outside scope of current system"
+    }
+  },
+
+  "utility_actions": {
+    "action_gentle_redirect": {
+      "action_name": "action_gentle_redirect",
+      "trigger": "off_topic",
+      "therapist_responses": {
+        "primary": "I appreciate you sharing that. And coming back to what we're working on - {last_relevant_point}...",
+        "gentle": "I hear you. And let's come back to {current_focus}...",
+        "direct": "Let's stay focused on {goal}. What were you noticing about {last_topic}?"
+      }
+    },
+
+    "action_gentle_prompt": {
+      "action_name": "action_gentle_prompt",
+      "trigger": "incomplete_response OR silence",
+      "therapist_responses": {
+        "primary": "Take your time... What are you noticing?",
+        "alternative": "Just check inside - what's there?",
+        "simple": "What's coming up for you?"
+      }
+    },
+
+    "action_validate_and_ground": {
+      "action_name": "action_validate_and_ground",
+      "trigger": "strong_emotion OR intensity_high",
+      "therapist_responses": {
+        "primary": "That's right, there's a lot there. Just take a breath for a moment...",
+        "validating": "I can see this is really affecting you. That makes sense given what you've been through.",
+        "grounding": "Let's just pause for a moment. Take a slow breath. That's right."
+      },
+      "api_call": "no_harm.validate(emotion)",
+      "follow_up": "action_body_check"
+    },
+
+    "action_normalize_tears": {
+      "action_name": "action_normalize_tears",
+      "trigger": "client_crying",
+      "therapist_responses": {
+        "humor": "I don't know, I get more tears than Oprah, who knows?",
+        "validating": "This is really difficult stuff. That makes sense.",
+        "normalizing": "This is heavy. There's a lot there.",
+        "simple": "That's right. It's okay."
+      },
+      "api_call": "no_harm.normalize('crying')"
+    },
+
+    "action_normalize_and_reassure": {
+      "action_name": "action_normalize_and_reassure",
+      "trigger": "express_resistance OR hesitation",
+      "therapist_responses": {
+        "primary": "That's okay. We'll go at your pace. What feels hard about it?",
+        "reassuring": "That makes sense. There's no rush. We'll take this one step at a time.",
+        "normalizing": "It's completely normal to feel uncertain. This is new."
+      },
+      "api_call": "no_harm.normalize(client_concern)"
+    }
+  },
+
+  "detection_actions": {
+    "detect_body_words": {
+      "body_words": ["chest", "stomach", "shoulders", "head", "throat", "leg", "back", "arms", "tight", "heavy", "pain", "ache", "pressure", "tense", "burning", "numb"],
+      "if_present": "body_aware = true",
+      "if_absent": "body_aware = false"
+    },
+
+    "detect_thinking_mode": {
+      "thinking_words": ["i think", "probably", "because", "the reason is", "maybe", "might be"],
+      "if_present": "thinking_mode = true → REDIRECT",
+      "redirect_action": "action_redirect_thinking_to_feeling"
+    },
+
+    "detect_tense": {
+      "present_indicators": ["i feel", "i'm feeling", "right now", "currently", "i notice"],
+      "past_indicators": ["i felt", "i was", "back then", "when i", "used to"],
+      "if_past": "redirect_to_present"
+    },
+
+    "detect_readiness": {
+      "ready_words": ["ready", "okay", "let's do it", "i'm good", "yes let's"],
+      "resistance_words": ["not sure", "don't know", "maybe", "anxious about", "not ready", "wait"],
+      "compare": "ready_count vs resistance_count"
+    }
+  }
+}

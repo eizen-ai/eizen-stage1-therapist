@@ -1,0 +1,26 @@
+# AI Therapist - TRT System Requirements
+# Python 3.8+
+
+# Core ML/AI
+sentence-transformers==2.2.2    # Sentence embeddings for RAG
+faiss-cpu==1.7.4                # Vector similarity search (use faiss-gpu if GPU available)
+numpy==1.24.3                   # Numerical operations
+
+# HTTP/API
+requests==2.31.0                # Ollama API communication
+
+# NLP
+nltk==3.8.1                     # Natural language processing (spell correction)
+
+# Data & Utils
+python-dateutil==2.8.2          # Date/time utilities
+pytz==2023.3                    # Timezone handling
+
+# Optional but recommended
+# ollama                         # Official Ollama Python client (alternative to requests)
+# transformers                   # Hugging Face transformers (if using other models)
+
+# Development/Testing (optional)
+# pytest==7.4.0                  # Unit testing
+# black==23.7.0                  # Code formatting
+# flake8==6.1.0                  # Code linting
