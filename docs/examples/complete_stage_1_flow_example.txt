@@ -1,0 +1,281 @@
+COMPLETE STAGE 1 FLOW EXAMPLE WITH RAG SYSTEM
+================================================================
+
+SCENARIO: New client says "I'm stressed and don't know what to do"
+
+================================================================
+EXCHANGE 1: GOAL SETTING (Substate 1.1)
+================================================================
+
+CLIENT INPUT: "I'm really stressed and don't know what to do anymore"
+
+MASTER PLANNING AGENT PROCESS:
+├── Uses: optimized_master_agent.txt
+├── Input Classification: "vague_problem" + "stressed" (from input_classification_patterns.json)
+├── Current Substate: 1.1_goal_and_vision (from simplified_navigation.json)
+├── Trigger Match: "vague_goal" → "clarify_goal"
+
+MASTER PLANNING AGENT OUTPUT:
+{
+  "current_stage": "stage_1_safety_building",
+  "current_substate": "1.1_goal_and_vision",
+  "navigation_decision": "clarify_goal",
+  "situation_type": "vague_stress_problem",
+  "rag_query": "dr_q_goal_clarification",
+  "completion_status": "in_progress",
+  "ready_for_next": false
+}
+
+RAG SYSTEM PROCESS:
+├── Query: "dr_q_goal_clarification"
+├── Searches Embedded Exchanges for: "initial_goal_inquiry" + "vague_problem"
+├── Retrieves: Exchange 01_001 (labeled_exchanges_example.json)
+├── Returns: Dr. Q's triple question technique
+
+RAG RETRIEVAL RESULT:
+"What do we want our time to focus on today? What do we want to get better for you? How do we want you to be when we're done?"
+
+DIALOGUE AGENT RESPONSE:
+"What do we want our time together to accomplish? What do we want to get better for you? How do you want to be different when we're done today?"
+
+CLIENT RESPONSE: "I want to feel calm and not so anxious all the time"
+
+================================================================
+EXCHANGE 2: VISION BUILDING (Still Substate 1.1)
+================================================================
+
+CLIENT INPUT: "I want to feel calm and not so anxious all the time"
+
+MASTER PLANNING AGENT PROCESS:
+├── Input Classification: "clear_goal" + "emotional_state"
+├── Current Substate: Still 1.1 (goal stated but needs vision)
+├── Trigger Match: "goal_stated" → "build_vision"
+
+MASTER PLANNING AGENT OUTPUT:
+{
+  "current_stage": "stage_1_safety_building",
+  "current_substate": "1.1_goal_and_vision",
+  "navigation_decision": "build_vision",
+  "situation_type": "goal_stated_needs_vision",
+  "rag_query": "dr_q_future_self_vision_building",
+  "completion_status": "in_progress",
+  "ready_for_next": false
+}
+
+RAG SYSTEM PROCESS:
+├── Query: "dr_q_future_self_vision_building"
+├── Searches for: "detailed_outcome_state_description"
+├── Retrieves: Exchange 01_004
+
+RAG RETRIEVAL RESULT:
+"So we want you to be more calm, more emotionally present, lighter and easier on you, more grounded in you, not so dependent on anxiety. Does that make sense?"
+
+DIALOGUE AGENT RESPONSE:
+"I'm seeing a you who is calm, emotionally present, dealing with things with more ease and flexibility. Someone who feels more grounded and stable inside, not overwhelmed by anxiety. Does that vision feel right to you?"
+
+CLIENT RESPONSE: "Yes, that sounds exactly what I want!"
+
+================================================================
+EXCHANGE 3: ADVANCE TO PROBLEM CONSTRUCTION (Substate 1.2)
+================================================================
+
+CLIENT INPUT: "Yes, that sounds exactly what I want!"
+
+MASTER PLANNING AGENT PROCESS:
+├── Input Classification: "vision_accepted" + "strong_agreement"
+├── Completion Check: goal_stated ✓ + vision_accepted ✓
+├── Trigger Match: "vision_accepted" → "advance_to_1.2"
+
+MASTER PLANNING AGENT OUTPUT:
+{
+  "current_stage": "stage_1_safety_building",
+  "current_substate": "1.2_problem_and_body",
+  "navigation_decision": "advance_to_problem_inquiry",
+  "situation_type": "vision_accepted_ready_for_problem",
+  "rag_query": "goal_to_problem_transition",
+  "completion_status": "substate_advanced",
+  "ready_for_next": true
+}
+
+RAG SYSTEM PROCESS:
+├── Query: "goal_to_problem_transition"
+├── Searches for: transitions from goal setting to problem inquiry
+├── May not find exact match, uses general problem inquiry
+
+DIALOGUE AGENT RESPONSE:
+"Good. Now help me understand - what's been making it hard for you to feel that calm and grounded? What's been happening that creates the anxiety?"
+
+CLIENT RESPONSE: "Well, it's mainly work pressure and I also get this tight feeling in my chest when I think about deadlines"
+
+================================================================
+EXCHANGE 4: BODY AWARENESS BUILDING (Substate 1.2)
+================================================================
+
+CLIENT INPUT: "Well, it's mainly work pressure and I also get this tight feeling in my chest when I think about deadlines"
+
+MASTER PLANNING AGENT PROCESS:
+├── Input Classification: "external_stressors" + "body_symptoms"
+├── Current Substate: 1.2_problem_and_body
+├── Trigger Match: "body_symptoms" → "present_body_inquiry"
+
+MASTER PLANNING AGENT OUTPUT:
+{
+  "current_stage": "stage_1_safety_building",
+  "current_substate": "1.2_problem_and_body",
+  "navigation_decision": "present_body_inquiry",
+  "situation_type": "body_symptoms_with_external_trigger",
+  "rag_query": "dr_q_body_symptom_present_moment_inquiry",
+  "completion_status": "in_progress",
+  "ready_for_next": false
+}
+
+RAG SYSTEM PROCESS:
+├── Query: "dr_q_body_symptom_present_moment_inquiry"
+├── Searches for: body symptom + present moment inquiry
+├── Retrieves: Exchange 01_002 and 01_003
+
+RAG RETRIEVAL RESULT:
+"And even you talking about work pressure right now, you're feeling some of that tightness. What's that like in your chest right now? Is it tight, heavy, constricted?"
+
+DIALOGUE AGENT RESPONSE:
+"And even as you're telling me about deadlines right now, what do you notice in your chest? What's that tightness like - is it tight, heavy, pressing?"
+
+CLIENT RESPONSE: "Yeah, it's like a heavy weight pressing down. I can feel it right now actually."
+
+================================================================
+EXCHANGE 5: PATTERN INQUIRY (Still Substate 1.2)
+================================================================
+
+CLIENT INPUT: "Yeah, it's like a heavy weight pressing down. I can feel it right now actually."
+
+MASTER PLANNING AGENT PROCESS:
+├── Input Classification: "present_body_awareness" + "pattern_description"
+├── Body awareness ✓, now explore pattern
+├── Trigger Match: "emotional_pattern" → "how_do_you_know_inquiry"
+
+MASTER PLANNING AGENT OUTPUT:
+{
+  "current_stage": "stage_1_safety_building",
+  "current_substate": "1.2_problem_and_body",
+  "navigation_decision": "pattern_inquiry",
+  "situation_type": "body_awareness_established_explore_pattern",
+  "rag_query": "dr_q_how_do_you_know_technique",
+  "completion_status": "in_progress",
+  "ready_for_next": false
+}
+
+RAG SYSTEM PROCESS:
+├── Query: "dr_q_how_do_you_know_technique"
+├── Retrieves: Exchange 01_005
+├── Gets Dr. Q's pattern inquiry approach
+
+RAG RETRIEVAL RESULT:
+"How do you know when you feel anxious about deadlines? What is it that's happening in that moment?"
+
+DIALOGUE AGENT RESPONSE:
+"How do you know when the deadline pressure is getting to you? What's happening in that moment when the anxiety starts?"
+
+CLIENT RESPONSE: "Usually it's when I look at my calendar and see how much I have to do. Then I start thinking 'what if I don't finish' and the chest tightness starts."
+
+================================================================
+EXCHANGE 6: READINESS ASSESSMENT (Substate 1.3)
+================================================================
+
+CLIENT INPUT: "Usually it's when I look at my calendar and see how much I have to do. Then I start thinking 'what if I don't finish' and the chest tightness starts."
+
+MASTER PLANNING AGENT PROCESS:
+├── Pattern understood ✓ + body awareness ✓
+├── Check completion: problem_understood ✓ + body_awareness_present ✓
+├── Trigger Match: "ready_for_stage_2" → "assess_readiness"
+
+MASTER PLANNING AGENT OUTPUT:
+{
+  "current_stage": "stage_1_safety_building",
+  "current_substate": "1.3_readiness_assessment",
+  "navigation_decision": "assess_readiness_or_transition",
+  "situation_type": "pattern_understood_assess_next_steps",
+  "rag_query": "dr_q_transition_to_intervention",
+  "completion_status": "stage_1_nearly_complete",
+  "ready_for_next": "assess_further"
+}
+
+RAG SYSTEM PROCESS:
+├── Query: "dr_q_transition_to_intervention"
+├── Looks for transitions to deeper work
+├── May find supportive statements + readiness assessment
+
+DIALOGUE AGENT RESPONSE:
+"I can see this pattern is really affecting you - the calendar triggers the 'what if' thoughts which create the chest pressure. Before we work on changing this pattern, is there anything else that would be useful for me to understand about what's been difficult?"
+
+CLIENT RESPONSE: "No, I think that covers the main issue. I'm ready to work on changing this."
+
+================================================================
+STAGE 1 COMPLETION & TRANSITION
+================================================================
+
+CLIENT INPUT: "No, I think that covers the main issue. I'm ready to work on changing this."
+
+MASTER PLANNING AGENT PROCESS:
+├── All Stage 1 criteria met:
+│   ├── Clear goal ✓ (feel calm)
+│   ├── Vision accepted ✓ (grounded, not anxious)
+│   ├── Problem understood ✓ (calendar→thoughts→chest pressure)
+│   ├── Body awareness ✓ (present moment chest tightness)
+│   ├── Good rapport ✓ (client engaged and ready)
+├── Trigger Match: "ready_for_stage_2" → "transition_to_stage_2"
+
+MASTER PLANNING AGENT OUTPUT:
+{
+  "current_stage": "stage_1_safety_building",
+  "current_substate": "stage_1_complete",
+  "navigation_decision": "transition_to_stage_2",
+  "situation_type": "stage_1_complete_ready_for_logical_levels",
+  "rag_query": "dr_q_stage_1_to_stage_2_transition",
+  "completion_status": "stage_complete",
+  "ready_for_next": "stage_2_change_logical_levels"
+}
+
+DIALOGUE AGENT RESPONSE:
+"Good. So whatever it is that's causing that chest pressure and anxiety, we want to get that to stop. Before we work on the specific pattern, let me help you understand something important about how your brain works with this..."
+
+[TRANSITION TO STAGE 2 - CHANGE LOGICAL LEVELS]
+
+================================================================
+SYSTEM COMPONENTS USED THROUGHOUT:
+================================================================
+
+MASTER PLANNING AGENT:
+├── optimized_master_agent.txt (navigation logic)
+├── simplified_navigation.json (substate definitions)
+├── input_classification_patterns.json (pattern matching)
+
+RAG SYSTEM:
+├── labeled_exchanges_example.json (embedded exchanges)
+├── Semantic search on therapeutic contexts
+├── Returns Dr. Q's authentic examples
+
+DIALOGUE AGENT:
+├── Uses RAG examples as few-shot prompts
+├── Adapts Dr. Q's style to current situation
+├── Maintains therapeutic progression
+
+FLOW CONTROL:
+├── Master Agent decides navigation only
+├── RAG provides authentic content
+├── Dialogue Agent executes with Dr. Q's style
+├── Clear progression through substates
+├── Completion criteria guide advancement
+
+================================================================
+KEY SUCCESS FACTORS:
+================================================================
+
+✅ Master Agent focuses on NAVIGATION ONLY (no response generation)
+✅ RAG provides authentic Dr. Q examples for similar situations
+✅ Clear progression criteria prevent getting stuck
+✅ Body awareness prioritized throughout
+✅ Present moment focus maintained
+✅ Authentic therapeutic style preserved
+✅ Systematic advancement through TRT methodology
+
+This approach ensures proper conversation guidance while maintaining Dr. Q's authentic therapeutic approach and preventing unnecessary complexity.

@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Therapist Stage 1 - Complete System Reference</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 4px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #ecf0f1;
+            border-left: 5px solid #3498db;
+        }
+
+        h3 {
+            color: #2980b9;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #27ae60;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .section-nav {
+            background: #34495e;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+
+        .section-nav a {
+            color: #3498db;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            transition: background 0.3s;
+        }
+
+        .section-nav a:hover {
+            background: #2c3e50;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        thead {
+            background: #3498db;
+            color: white;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .state-id {
+            font-weight: bold;
+            color: #2980b9;
+        }
+
+        .framework-trigger {
+            background: #e74c3c;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .none {
+            color: #95a5a6;
+            font-style: italic;
+        }
+
+        .priority-1 {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .priority-2 {
+            background: #f39c12;
+            color: white;
+        }
+
+        .priority-3 {
+            background: #27ae60;
+            color: white;
+        }
+
+        .priority-4 {
+            background: #3498db;
+            color: white;
+        }
+
+        .priority-badge {
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        code {
+            background: #ecf0f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .example {
+            background: #fff9e6;
+            border-left: 4px solid #f39c12;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .note {
+            background: #e8f5e9;
+            border-left: 4px solid #27ae60;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .warning {
+            background: #ffebee;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .scroll-container {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Therapist Stage 1 - Complete System Reference
+            <span class="status-badge">✅ PRODUCTION READY</span>
+        </h1>
+
+        <div class="section-nav">
+            <strong>Quick Navigation:</strong>
+            <a href="#stats">Statistics</a>
+            <a href="#csv">CSV States</a>
+            <a href="#priority">Priority Routing</a>
+            <a href="#normal">Normal Flow</a>
+            <a href="#special">Special States</a>
+        </div>
+
+        <div class="note">
+            <strong>📌 About This Document:</strong> This reference shows the complete Stage 1 conversation management system.
+            The top section shows all 31 states from the CSV. The bottom section shows how State + Intent + Detection combinations
+            determine which action to take.
+        </div>
+
+        <!-- STATISTICS -->
+        <div id="stats" class="stats">
+            <div class="stat-card">
+                <div class="stat-number">31</div>
+                <div class="stat-label">Total States</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">31</div>
+                <div class="stat-label">Intents</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">10</div>
+                <div class="stat-label">Detections</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">28</div>
+                <div class="stat-label">RAG Queries</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">4</div>
+                <div class="stat-label">Framework Triggers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">Test Pass Rate</div>
+            </div>
+        </div>
+
+        <!-- CSV TABLE -->
+        <h2 id="csv">📋 Stage 1 Complete CSV - All 31 States</h2>
+
+        <div class="scroll-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>State_ID</th>
+                        <th>State_Name</th>
+                        <th>Client_Says_Example</th>
+                        <th>Client_Intent</th>
+                        <th>Detection_Checks</th>
+                        <th>Therapist_Action</th>
+                        <th>RAG_Query</th>
+                        <th>Fallback_Response</th>
+                        <th>Framework_Trigger</th>
+                        <th>Next_State_If</th>
+                        <th>Next_State_Else</th>
+                        <th>Implementation_Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- SECTION 1: GOAL & VISION -->
+                    <tr style="background: #e3f2fd;">
+                        <td colspan="12"><strong>SECTION 1: GOAL & VISION</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">1.1</td>
+                        <td>Goal Inquiry</td>
+                        <td>I'm stressed, overwhelmed</td>
+                        <td>session_start</td>
+                        <td>body_words, thinking_mode, tense</td>
+                        <td>ask_goal</td>
+                        <td>dr_q_goal_inquiry</td>
+                        <td>What do we want our time together to accomplish?</td>
+                        <td><span class="none">none</span></td>
+                        <td>goal_stated→1.2</td>
+                        <td>vague_problem→1.1_redirect</td>
+                        <td>Ask what client wants to achieve</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">1.1_redirect</td>
+                        <td>Redirect to Goal</td>
+                        <td>Work is hectic, pressure</td>
+                        <td>describes_problem</td>
+                        <td>body_words, stressor_type</td>
+                        <td>redirect_to_goal</td>
+                        <td>dr_q_redirect_outcome</td>
+                        <td>I hear {problem}. What do you WANT to feel instead?</td>
+                        <td><span class="none">none</span></td>
+                        <td>goal_stated→1.2</td>
+                        <td>continues→repeat</td>
+                        <td>Client said problem not goal - redirect</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">1.2</td>
+                        <td>Build Vision</td>
+                        <td>I want to feel peaceful</td>
+                        <td>states_goal</td>
+                        <td>extract_desired_state</td>
+                        <td>build_vision</td>
+                        <td>dr_q_vision</td>
+                        <td>So we want you to be {peaceful, present, grounded}. Does that make sense?</td>
+                        <td><span class="none">none</span></td>
+                        <td>accepts→1.3</td>
+                        <td>clarify→explain</td>
+                        <td>Build detailed future vision</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">1.3</td>
+                        <td>Get Permission</td>
+                        <td>Yes that's exactly what I want</td>
+                        <td>accepts_vision</td>
+                        <td>check_agreement</td>
+                        <td>ask_permission</td>
+                        <td>dr_q_permission</td>
+                        <td>Would it be okay with you?</td>
+                        <td><span class="none">none</span></td>
+                        <td>yes→2.1</td>
+                        <td>hesitant→reassure</td>
+                        <td>Ask permission before proceeding</td>
+                    </tr>
+
+                    <!-- SECTION 2: BODY AWARENESS -->
+                    <tr style="background: #fff3e0;">
+                        <td colspan="12"><strong>SECTION 2: BODY AWARENESS</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.1</td>
+                        <td>Problem Inquiry</td>
+                        <td>[permission granted]</td>
+                        <td>permission_granted</td>
+                        <td>body_words, thinking_mode</td>
+                        <td>ask_problem</td>
+                        <td>dr_q_problem</td>
+                        <td>What's been making it hard? What's been happening?</td>
+                        <td><span class="none">none</span></td>
+                        <td>has_body→2.2</td>
+                        <td>no_body→2.1_seek</td>
+                        <td>Understand what's been difficult</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.1_seek</td>
+                        <td>Seek Body</td>
+                        <td>Deadlines, pressure, too much</td>
+                        <td>no_body_awareness</td>
+                        <td>no_body_words</td>
+                        <td>guide_to_body</td>
+                        <td>dr_q_to_body</td>
+                        <td>When you think about {problem}, where do you feel it in your body?</td>
+                        <td><span class="framework-trigger">card_game (attempt 3)</span></td>
+                        <td>body_mentioned→2.2</td>
+                        <td>3_attempts→3.1</td>
+                        <td>MAX 3 attempts then trigger card_game OR skip to 3.1</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.2</td>
+                        <td>Body Location</td>
+                        <td>Chest feels tight, leg pain</td>
+                        <td>mentions_body</td>
+                        <td>body_words=true</td>
+                        <td>ask_location</td>
+                        <td>dr_q_location</td>
+                        <td>Where in your body?</td>
+                        <td><span class="none">none</span></td>
+                        <td>location→2.3</td>
+                        <td>vague→clarify</td>
+                        <td>Get specific location</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.3</td>
+                        <td>Sensation Quality</td>
+                        <td>Right leg, below knee</td>
+                        <td>gives_location</td>
+                        <td>extract_location</td>
+                        <td>ask_sensation</td>
+                        <td>dr_q_sensation</td>
+                        <td>What kind of sensation? Ache? Tight? Heavy?</td>
+                        <td><span class="none">none</span></td>
+                        <td>sensation→2.4</td>
+                        <td>unclear→repeat</td>
+                        <td>Understand sensation quality</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.4</td>
+                        <td>Present Check</td>
+                        <td>It's an ache, heavy weight</td>
+                        <td>describes_sensation</td>
+                        <td>extract_sensation</td>
+                        <td>affirm_and_check</td>
+                        <td>dr_q_present_check</td>
+                        <td>That's right, {ache}. You're feeling that right now, aren't you?</td>
+                        <td><span class="none">none</span></td>
+                        <td>present→2.5</td>
+                        <td>not_present→guide</td>
+                        <td>Affirm + check present awareness</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.5</td>
+                        <td>Pattern Inquiry</td>
+                        <td>Yes I feel it now</td>
+                        <td>present_aware</td>
+                        <td>present=true, body_aware=true</td>
+                        <td>ask_pattern</td>
+                        <td>dr_q_how_know</td>
+                        <td>How do you know when {problem} happens?</td>
+                        <td><span class="none">none</span></td>
+                        <td>pattern_clear→3.1</td>
+                        <td>unclear→guide</td>
+                        <td>Identify trigger→thought→body</td>
+                    </tr>
+
+                    <!-- SECTION 3: ALPHA SEQUENCE -->
+                    <tr style="background: #fce4ec;">
+                        <td colspan="12"><strong>SECTION 3: ALPHA SEQUENCE</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.1</td>
+                        <td>Assess Readiness</td>
+                        <td>Calendar triggers 'what if' thoughts, then tightness</td>
+                        <td>pattern_identified</td>
+                        <td>pattern_complete</td>
+                        <td>check_ready</td>
+                        <td>dr_q_ready</td>
+                        <td>Anything else I should understand?</td>
+                        <td><span class="none">none</span></td>
+                        <td>ready→3.2</td>
+                        <td>more→continue</td>
+                        <td>Check readiness for alpha</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.2</td>
+                        <td>Introduce Alpha</td>
+                        <td>No, that covers it</td>
+                        <td>ready_for_alpha</td>
+                        <td>all_criteria_met</td>
+                        <td>introduce_alpha</td>
+                        <td>dr_q_alpha_intro</td>
+                        <td>We'll do a short process to put your body in rest state. Willing to try?</td>
+                        <td><span class="none">none</span></td>
+                        <td>willing→3.3</td>
+                        <td>hesitant→explain</td>
+                        <td>Introduce alpha with permission</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.3</td>
+                        <td>Execute Alpha</td>
+                        <td>Okay I'm ready</td>
+                        <td>accepts_alpha</td>
+                        <td>ready</td>
+                        <td>execute_alpha</td>
+                        <td><span class="none">none</span></td>
+                        <td><span class="none">none</span></td>
+                        <td><span class="framework-trigger">⚡ alpha_sequence</span></td>
+                        <td>complete→3.4</td>
+                        <td>interrupted→handle</td>
+                        <td>Framework handles all 6 steps + body checks</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.4</td>
+                        <td>Post-Alpha</td>
+                        <td>[alpha complete]</td>
+                        <td>alpha_done</td>
+                        <td>alpha_complete</td>
+                        <td>ask_experience</td>
+                        <td>dr_q_post_alpha</td>
+                        <td>In those moments your eyes were closed, what did you notice?</td>
+                        <td><span class="none">none</span></td>
+                        <td>positive→3.5</td>
+                        <td>neutral→compare</td>
+                        <td>Ask about experience</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.5</td>
+                        <td>Link to Vision</td>
+                        <td>I felt free, nothing bothering</td>
+                        <td>positive_response</td>
+                        <td>extract_experience</td>
+                        <td>link_vision</td>
+                        <td>dr_q_link</td>
+                        <td>You felt {free}. That's where we're headed.</td>
+                        <td><span class="none">none</span></td>
+                        <td>linked→3.6</td>
+                        <td>needs_more→explore</td>
+                        <td>Link experience to vision</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.6</td>
+                        <td>Compare Progress</td>
+                        <td>[vision linked]</td>
+                        <td>linked</td>
+                        <td>sentiment_check</td>
+                        <td>compare_sentiment</td>
+                        <td>dr_q_compare</td>
+                        <td>How's your body now compared to when we started?</td>
+                        <td><span class="none">none</span></td>
+                        <td>improved→4.1</td>
+                        <td>same→more_work</td>
+                        <td>Compare start vs now</td>
+                    </tr>
+
+                    <!-- SECTION 4: TRANSITION -->
+                    <tr style="background: #e8f5e9;">
+                        <td colspan="12"><strong>SECTION 4: TRANSITION</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">4.1</td>
+                        <td>Ready Stage 2</td>
+                        <td>Better, calmer</td>
+                        <td>improved</td>
+                        <td>improvement=true, complete</td>
+                        <td>transition</td>
+                        <td>dr_q_transition</td>
+                        <td>Good. Whatever's causing {problem}, we want to stop it. Ready?</td>
+                        <td><span class="none">none</span></td>
+                        <td>stage2→begin</td>
+                        <td>not_ready→continue</td>
+                        <td>Metaphors triggered strategically in Stage 2</td>
+                    </tr>
+
+                    <!-- PRIORITY REDIRECTS -->
+                    <tr style="background: #fff9c4;">
+                        <td colspan="12"><strong>PRIORITY REDIRECTS (Can Interrupt ANY State)</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">THINK</td>
+                        <td>Redirect Thinking</td>
+                        <td>I think it's because when I was...</td>
+                        <td>thinking_mode</td>
+                        <td>thinking_words=['i think','because']</td>
+                        <td>redirect_thinking</td>
+                        <td>dr_q_think_redirect</td>
+                        <td>Rather than thinking, what are you FEELING right now?</td>
+                        <td><span class="none">none (attempt 3→3.2)</span></td>
+                        <td>feeling→continue</td>
+                        <td>3_attempts→3.2</td>
+                        <td>MAX 3 attempts then direct to alpha 3.2 (grounding)</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">PAST</td>
+                        <td>Redirect Past</td>
+                        <td>Back then when I was young...</td>
+                        <td>past_tense</td>
+                        <td>past_words=['back then','when i was']</td>
+                        <td>redirect_past</td>
+                        <td>dr_q_past_redirect</td>
+                        <td>That was then. Right now, what are you FEELING?</td>
+                        <td><span class="none">none (attempt 3→3.2)</span></td>
+                        <td>present→continue</td>
+                        <td>3_attempts→3.2</td>
+                        <td>MAX 3 attempts then direct to alpha 3.2 (present anchoring)</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">AFFIRM</td>
+                        <td>Just Affirm</td>
+                        <td>I feel tightness in chest now</td>
+                        <td>body_present</td>
+                        <td>body_aware=true, present=true</td>
+                        <td>affirm_only</td>
+                        <td>dr_q_affirm</td>
+                        <td>That's right.</td>
+                        <td><span class="none">none</span></td>
+                        <td>continue→natural</td>
+                        <td>n/a</td>
+                        <td>Use 60%+ instead of asking. Natural flow</td>
+                    </tr>
+
+                    <!-- SPECIAL STATES -->
+                    <tr style="background: #ffcccc;">
+                        <td colspan="12"><strong>SPECIAL STATES (High Priority)</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">EMOTION</td>
+                        <td>Strong Emotion</td>
+                        <td>I'm SO STRESSED!!! Can't TAKE it!!!</td>
+                        <td>high_intensity</td>
+                        <td>caps, exclamations, intensity</td>
+                        <td>validate_ground</td>
+                        <td>dr_q_validate</td>
+                        <td>That's right, there's a lot there. Take a breath...</td>
+                        <td><span class="none">none</span></td>
+                        <td>calm→continue</td>
+                        <td>escalated→support</td>
+                        <td>Validate + ground when high intensity</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">CRY</td>
+                        <td>Client Crying</td>
+                        <td>[crying]</td>
+                        <td>crying</td>
+                        <td>crying_detected</td>
+                        <td>normalize_cry</td>
+                        <td>dr_q_cry</td>
+                        <td>This is difficult stuff. Makes sense.</td>
+                        <td><span class="none">none</span></td>
+                        <td>calm→continue_previous</td>
+                        <td>upset→more_support</td>
+                        <td>Normalize tears</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">SILENT</td>
+                        <td>Not Speaking</td>
+                        <td>Um... [long pause]</td>
+                        <td>silence</td>
+                        <td>incomplete_response</td>
+                        <td>prompt_or_cards</td>
+                        <td>dr_q_prompt</td>
+                        <td>Take your time... What are you noticing?</td>
+                        <td><span class="framework-trigger">card_game (if continues)</span></td>
+                        <td>speaks→continue</td>
+                        <td>still_silent→offer_cards</td>
+                        <td>Gentle prompt. If continues silent → trigger card_game</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">OFF</td>
+                        <td>Off Topic</td>
+                        <td>Did you see the game?</td>
+                        <td>off_topic</td>
+                        <td>topic_check</td>
+                        <td>redirect_gently</td>
+                        <td>dr_q_redirect</td>
+                        <td>I appreciate that. Back to what we're working on...</td>
+                        <td><span class="none">none</span></td>
+                        <td>back→continue</td>
+                        <td>still_off→firmer</td>
+                        <td>Gentle redirect</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">VALID</td>
+                        <td>Seek Validation</td>
+                        <td>Is this normal?</td>
+                        <td>validation</td>
+                        <td>seeking_validation</td>
+                        <td>normalize</td>
+                        <td>dr_q_normalize</td>
+                        <td>Absolutely. Makes complete sense.</td>
+                        <td><span class="none">none</span></td>
+                        <td>reassured→continue</td>
+                        <td>needs_more→explain</td>
+                        <td>Normalize experience</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">RELATION</td>
+                        <td>Relational Pattern</td>
+                        <td>Need to make everyone happy</td>
+                        <td>people_pleasing</td>
+                        <td>relational_issue</td>
+                        <td>explore_internal</td>
+                        <td>dr_q_relational</td>
+                        <td>When you're trying to make everyone happy, what do you feel?</td>
+                        <td><span class="none">none</span></td>
+                        <td>body→continue</td>
+                        <td>external→redirect</td>
+                        <td>For relational issues - go to body</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">SELFHARM</td>
+                        <td>Self-Harm Mention</td>
+                        <td>I want to hurt myself / end it all</td>
+                        <td>self_harm_detected</td>
+                        <td>self_harm_words</td>
+                        <td>safety_protocol</td>
+                        <td><span class="none">none</span></td>
+                        <td>I hear you're having thoughts of hurting yourself. Your safety is important.</td>
+                        <td><span class="framework-trigger">⚡ no_harm</span></td>
+                        <td>engaged→assess_safety</td>
+                        <td>crisis→CRISIS</td>
+                        <td>SAFETY PROTOCOL - only trigger no_harm for self-harm mentions</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">CRISIS</td>
+                        <td>Acute Crisis</td>
+                        <td>[incoherent/severe panic/manic]</td>
+                        <td>crisis_state</td>
+                        <td>incoherent, severe_panic, manic_speech</td>
+                        <td>crisis_assess</td>
+                        <td><span class="none">none</span></td>
+                        <td>I hear you're having a really hard time right now. Are you safe?</td>
+                        <td><span class="framework-trigger">⚡ no_harm (if unsafe)</span></td>
+                        <td>safe_calm→continue</td>
+                        <td>unsafe→emergency</td>
+                        <td>CRISIS: Severe panic, manic episode. Assess safety immediately</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">RESISTANCE</td>
+                        <td>Client Resistant</td>
+                        <td>This isn't helping / waste of time</td>
+                        <td>resistant</td>
+                        <td>skepticism, not_helping</td>
+                        <td>address_resistance</td>
+                        <td>dr_q_resistance</td>
+                        <td>I hear this doesn't feel helpful yet. Trust the process...</td>
+                        <td><span class="none">none</span></td>
+                        <td>willing→continue</td>
+                        <td>still_resistant→explain</td>
+                        <td>Address therapeutic resistance and skepticism</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">RAMBLING</td>
+                        <td>Excessive Detail</td>
+                        <td>Well back in 1987 when... [5+ minutes]</td>
+                        <td>rambling</td>
+                        <td>excessive_length, no_body_reference</td>
+                        <td>gentle_interrupt</td>
+                        <td>dr_q_interrupt</td>
+                        <td>I appreciate that context. When you think about all that, where do you feel it?</td>
+                        <td><span class="none">none</span></td>
+                        <td>body_mentioned→2.2</td>
+                        <td>still_rambling→firmer</td>
+                        <td>Interrupt rambling gently, redirect to body</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PRIORITY ROUTING SECTION -->
+        <h2 id="priority">⚡ Priority Routing - State + Intent + Detection → Action</h2>
+
+        <div class="warning">
+            <strong>⚠️ How Priority Routing Works:</strong> Even if you're in a specific state, certain detections will OVERRIDE the normal flow.
+            Priority 1 (Safety) is highest and can interrupt from ANY state.
+        </div>
+
+        <h3><span class="priority-badge priority-1">PRIORITY 1</span> Safety (Highest - From ANY State)</h3>
+
+        <div class="scroll-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Current State</th>
+                        <th>Intent</th>
+                        <th>Detections</th>
+                        <th>Next State</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>any</td>
+                        <td><code>self_harm=True</code></td>
+                        <td class="state-id">SELFHARM</td>
+                        <td><span class="framework-trigger">⚡ no_harm</span> framework</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="example">
+            <strong>Example:</strong><br>
+            State: 2.3 (Sensation Quality)<br>
+            Client: "I want to hurt myself"<br>
+            Detection: <code>self_harm=True</code><br>
+            → Routes to <strong>SELFHARM</strong> state + triggers no_harm framework
+        </div>
+
+        <h3><span class="priority-badge priority-2">PRIORITY 2</span> Therapeutic Redirects (From ANY State)</h3>
+
+        <div class="scroll-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Current State</th>
+                        <th>Intent</th>
+                        <th>Detections</th>
+                        <th>Loop Counter</th>
+                        <th>Next State</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>any</td>
+                        <td><code>thinking_mode=True</code></td>
+                        <td>&lt; 3</td>
+                        <td class="state-id">THINK</td>
+                        <td>RAG: <code>dr_q_think_redirect</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>any</td>
+                        <td><code>thinking_mode=True</code></td>
+                        <td>&gt;= 3</td>
+                        <td class="state-id">3.2</td>
+                        <td>Escape to alpha (grounding)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>any</td>
+                        <td><code>tense='past'</code></td>
+                        <td>&lt; 3</td>
+                        <td class="state-id">PAST</td>
+                        <td>RAG: <code>dr_q_past_redirect</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>any</td>
+                        <td><code>tense='past'</code></td>
+                        <td>&gt;= 3</td>
+                        <td class="state-id">3.2</td>
+                        <td>Escape to alpha (anchoring)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="example">
+            <strong>Example 1:</strong><br>
+            State: 2.4 (Present Check)<br>
+            Client: "I think it's because of my past"<br>
+            Detection: <code>thinking_mode=True</code>, loop_counter[THINK]=1<br>
+            → Routes to <strong>THINK</strong> state, asks "What are you FEELING?"
+        </div>
+
+        <h3><span class="priority-badge priority-3">PRIORITY 3</span> Affirmation (From ANY State)</h3>
+
+        <div class="scroll-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Current State</th>
+                        <th>Intent</th>
+                        <th>Detections</th>
+                        <th>Next State</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>any</td>
+                        <td><code>body_words=True</code> + <code>tense='present'</code></td>
+                        <td class="state-id">AFFIRM</td>
+                        <td>RAG: <code>dr_q_affirm</code> ("That's right.")</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="note">
+            <strong>💡 Affirmation Strategy:</strong> Use affirmation 60%+ of the time instead of asking questions.
+            This creates therapeutic rapport and validates the client's present-moment body awareness.
+        </div>
+
+        <h3><span class="priority-badge priority-4">PRIORITY 4</span> Special States (From ANY State)</h3>
+
+        <div class="scroll-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Current State</th>
+                        <th>Intent</th>
+                        <th>Detections</th>
+                        <th>Next State</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>crisis_state</td>
+                        <td><code>incoherent=True</code> OR <code>severe_panic=True</code></td>
+                        <td class="state-id">CRISIS</td>
+                        <td><span class="framework-trigger">⚡ no_harm</span> if unsafe</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>resistant</td>
+                        <td><code>skepticism=True</code></td>
+                        <td class="state-id">RESISTANCE</td>
+                        <td>RAG: <code>dr_q_resistance</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>rambling</td>
+                        <td><code>excessive_length=True</code></td>
+                        <td class="state-id">RAMBLING</td>
+                        <td>RAG: <code>dr_q_interrupt</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>high_intensity</td>
+                        <td><code>intensity='high'</code> + <code>caps=True</code></td>
+                        <td class="state-id">EMOTION</td>
+                        <td>RAG: <code>dr_q_validate</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>crying</td>
+                        <td><code>crying_detected=True</code></td>
+                        <td class="state-id">CRY</td>
+                        <td>RAG: <code>dr_q_cry</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>silence</td>
+                        <td><code>silence=True</code></td>
+                        <td class="state-id">SILENT</td>
+                        <td>RAG: <code>dr_q_prompt</code>, <span class="framework-trigger">card_game</span> if continues</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>off_topic</td>
+                        <td><code>off_topic=True</code></td>
+                        <td class="state-id">OFF</td>
+                        <td>RAG: <code>dr_q_redirect</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>validation</td>
+                        <td><code>seeking_validation=True</code></td>
+                        <td class="state-id">VALID</td>
+                        <td>RAG: <code>dr_q_normalize</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ANY</strong></td>
+                        <td>people_pleasing</td>
+                        <td><code>relational_issue=True</code></td>
+                        <td class="state-id">RELATION</td>
+                        <td>RAG: <code>dr_q_relational</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- NORMAL FLOW SECTION -->
+        <h2 id="normal">📊 Normal Flow - State Machine Routing (Priority 5)</h2>
+
+        <div class="note">
+            <strong>📌 Normal Flow:</strong> If no priority detections trigger, the system follows the normal state machine logic
+            based on the current state and client intent.
+        </div>
+
+        <h3>Section 1: Goal & Vision (States 1.x)</h3>
+
+        <div class="scroll-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Intent</th>
+                        <th>Detections</th>
+                        <th>Next State</th>
+                        <th>Action</th>
+                        <th>Example</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="state-id">1.1</td>
+                        <td>session_start</td>
+                        <td>none</td>
+                        <td>1.1</td>
+                        <td>RAG: <code>dr_q_goal_inquiry</code></td>
+                        <td>"I'm stressed" → Stay at 1.1, ask for goal</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">1.1</td>
+                        <td>states_goal</td>
+                        <td>none</td>
+                        <td>1.2</td>
+                        <td>RAG: <code>dr_q_vision</code></td>
+                        <td>"I want to feel calm" → Move to 1.2</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">1.1</td>
+                        <td>describes_problem</td>
+                        <td>none</td>
+                        <td>1.1_redirect</td>
+                        <td>RAG: <code>dr_q_redirect_outcome</code></td>
+                        <td>"Work is stressful" → Redirect to goal</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">1.2</td>
+                        <td>accepts_vision</td>
+                        <td>none</td>
+                        <td>1.3</td>
+                        <td>RAG: <code>dr_q_permission</code></td>
+                        <td>"Yes, exactly!" → Move to 1.3</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">1.3</td>
+                        <td>permission_granted</td>
+                        <td>none</td>
+                        <td>2.1</td>
+                        <td>RAG: <code>dr_q_problem</code></td>
+                        <td>"Yes" → Move to 2.1</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Section 2: Body Awareness (States 2.x)</h3>
+
+        <div class="scroll-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Intent</th>
+                        <th>Detections</th>
+                        <th>Loop Counter</th>
+                        <th>Next State</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="state-id">2.1</td>
+                        <td>no_body_awareness</td>
+                        <td><code>body_words=False</code></td>
+                        <td>-</td>
+                        <td>2.1_seek</td>
+                        <td>RAG: <code>dr_q_to_body</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.1</td>
+                        <td>mentions_body</td>
+                        <td><code>body_words=True</code></td>
+                        <td>-</td>
+                        <td>2.2</td>
+                        <td>RAG: <code>dr_q_location</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.1_seek</td>
+                        <td>no_body_awareness</td>
+                        <td><code>body_words=False</code></td>
+                        <td>&lt; 3</td>
+                        <td>2.1_seek</td>
+                        <td>RAG: <code>dr_q_to_body</code> (repeat)</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.1_seek</td>
+                        <td>no_body_awareness</td>
+                        <td><code>body_words=False</code></td>
+                        <td>&gt;= 3</td>
+                        <td><strong>ESCAPE</strong></td>
+                        <td><span class="framework-trigger">card_game</span> OR skip to 3.1</td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.1_seek</td>
+                        <td>mentions_body</td>
+                        <td><code>body_words=True</code></td>
+                        <td>any</td>
+                        <td>2.2</td>
+                        <td>RAG: <code>dr_q_location</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.2</td>
+                        <td>gives_location</td>
+                        <td>none</td>
+                        <td>-</td>
+                        <td>2.3</td>
+                        <td>RAG: <code>dr_q_sensation</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.3</td>
+                        <td>describes_sensation</td>
+                        <td>none</td>
+                        <td>-</td>
+                        <td>2.4</td>
+                        <td>RAG: <code>dr_q_present_check</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.4</td>
+                        <td>present_aware</td>
+                        <td><code>body_aware=True</code> + <code>tense='present'</code></td>
+                        <td>-</td>
+                        <td>2.5</td>
+                        <td>RAG: <code>dr_q_how_know</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">2.5</td>
+                        <td>pattern_identified</td>
+                        <td>pattern_complete</td>
+                        <td>-</td>
+                        <td>3.1</td>
+                        <td>RAG: <code>dr_q_ready</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Section 3: Alpha Sequence (States 3.x)</h3>
+
+        <div class="scroll-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Intent</th>
+                        <th>Next State</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="state-id">3.1</td>
+                        <td>ready_for_alpha</td>
+                        <td>3.2</td>
+                        <td>RAG: <code>dr_q_alpha_intro</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.2</td>
+                        <td>accepts_alpha</td>
+                        <td>3.3</td>
+                        <td><span class="framework-trigger">⚡ alpha_sequence</span></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.3</td>
+                        <td>alpha_complete</td>
+                        <td>3.4</td>
+                        <td>RAG: <code>dr_q_post_alpha</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.4</td>
+                        <td>positive_response</td>
+                        <td>3.5</td>
+                        <td>RAG: <code>dr_q_link</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.5</td>
+                        <td>linked</td>
+                        <td>3.6</td>
+                        <td>RAG: <code>dr_q_compare</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">3.6</td>
+                        <td>improved</td>
+                        <td>4.1</td>
+                        <td>RAG: <code>dr_q_transition</code></td>
+                    </tr>
+                    <tr>
+                        <td class="state-id">4.1</td>
+                        <td>ready</td>
+                        <td><strong>STAGE 2</strong></td>
+                        <td>Begin Stage 2 (metaphors triggered strategically)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="margin-top: 60px; padding-top: 20px; border-top: 2px solid #ecf0f1; text-align: center; color: #7f8c8d;">
+            <p><strong>AI Therapist Stage 1 - Complete System Reference</strong></p>
+            <p>Status: ✅ Production Ready | Total States: 31 | Test Pass Rate: 100%</p>
+            <p>Date: 2025-10-08 | TRT Methodology | LLM-Augmented State Machine</p>
+        </div>
+    </div>
+</body>
+</html>

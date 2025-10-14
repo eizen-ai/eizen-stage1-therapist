@@ -1,0 +1,167 @@
+{
+  "session_01_labeled_exchanges": [
+    {
+      "exchange_id": "01_001",
+      "doctor_input": "What do we want our time to focus on today? What do we want to get better for you? How do we want you to be when we're done?",
+      "patient_response": "I want to feel peaceful. Right now, a lot of things are going on. At work also, it's pretty hectic. Just trying to figure out everything. And I'm in constant hurry.",
+      "therapeutic_labels": {
+        "trt_stage": "stage_1_safety_building",
+        "trt_substate": "1.1_goal_and_vision",
+        "situation_type": "initial_goal_inquiry",
+        "dr_q_technique": "triple_goal_question_technique",
+        "client_presentation": "partial_goal_with_external_stressors",
+        "outcome": "goal_stated_needs_vision_building"
+      },
+      "embedding_tags": [
+        "goal_setting", "initial_session", "peaceful_goal",
+        "work_stress", "dr_q_opening_questions", "multiple_questions",
+        "stage_1_beginning", "goal_clarification"
+      ],
+      "rag_retrieval_contexts": [
+        "client_states_vague_peaceful_goal",
+        "initial_session_goal_setting",
+        "work_stress_mentioned_in_goal_setting",
+        "dr_q_triple_question_approach"
+      ]
+    },
+
+    {
+      "exchange_id": "01_002",
+      "doctor_input": "Where in the leg? And what kind of hurt is it? Is it an ache? Is it a stab?",
+      "patient_response": "It's an ache. Whenever I stretch, I feel like, okay, this is a good position. This feels better.",
+      "context_before": "Patient mentioned: 'Recently, I'm feeling a lot of pain in my body also. In my right leg. So whenever I'm stressed or whenever I'm overthinking or whenever I'm triggered from my past, so it's like kind of start hurting a lot.'",
+      "therapeutic_labels": {
+        "trt_stage": "stage_1_safety_building",
+        "trt_substate": "1.2_problem_and_body",
+        "situation_type": "body_symptom_present_inquiry",
+        "dr_q_technique": "specific_somatic_questioning",
+        "client_presentation": "stress_related_physical_symptoms",
+        "outcome": "body_awareness_activated"
+      },
+      "embedding_tags": [
+        "body_symptoms", "leg_pain", "somatic_inquiry",
+        "present_moment_body", "stress_physical_connection",
+        "dr_q_body_questions", "ache_description", "location_specific"
+      ],
+      "rag_retrieval_contexts": [
+        "client_mentions_body_pain_stress_connection",
+        "dr_q_specific_body_location_inquiry",
+        "somatic_symptom_exploration",
+        "stress_triggered_physical_symptoms"
+      ]
+    },
+
+    {
+      "exchange_id": "01_003",
+      "doctor_input": "And even you just talking about it right now, you're feeling some of it.",
+      "patient_response": "Yes.",
+      "context_before": "Discussion about leg pain and stress connection",
+      "therapeutic_labels": {
+        "trt_stage": "stage_1_safety_building",
+        "trt_substate": "1.2_problem_and_body",
+        "situation_type": "present_moment_body_awareness",
+        "dr_q_technique": "present_moment_somatic_observation",
+        "client_presentation": "immediate_body_response_confirmation",
+        "outcome": "present_body_awareness_established"
+      },
+      "embedding_tags": [
+        "present_moment", "body_awareness", "immediate_response",
+        "somatic_connection", "dr_q_observation", "present_tense_focus",
+        "feeling_in_the_now", "body_mind_connection"
+      ],
+      "rag_retrieval_contexts": [
+        "dr_q_present_moment_body_observation",
+        "immediate_somatic_awareness_building",
+        "present_tense_body_focus",
+        "connecting_talking_to_feeling"
+      ]
+    },
+
+    {
+      "exchange_id": "01_004",
+      "doctor_input": "So we want you to be more peaceful. We want you to be much more emotionally present. We want you to be lighter and easier on you because there's been lots of insecurities or second guessing myself or worrying about what others think. So we want to get it so that you're lighter, more okay in you, not so heavily dependent on the worry about what others might think. Like more grounded in you. Does that make sense?",
+      "patient_response": "Yes, completely. I want that.",
+      "context_before": "After goal stated and problem understood",
+      "therapeutic_labels": {
+        "trt_stage": "stage_1_safety_building",
+        "trt_substate": "1.1_goal_and_vision",
+        "situation_type": "future_self_vision_building",
+        "dr_q_technique": "detailed_outcome_state_description",
+        "client_presentation": "full_acceptance_of_vision",
+        "outcome": "vision_accepted_ready_for_next_phase"
+      },
+      "embedding_tags": [
+        "future_self_vision", "peaceful_outcome", "emotionally_present",
+        "lighter_easier", "grounded_in_self", "vision_acceptance",
+        "dr_q_outcome_building", "detailed_future_state", "stage_1_completion"
+      ],
+      "rag_retrieval_contexts": [
+        "dr_q_detailed_future_self_description",
+        "peaceful_emotionally_present_vision",
+        "client_accepts_future_vision_completely",
+        "grounded_in_self_outcome_state"
+      ]
+    },
+
+    {
+      "exchange_id": "01_005",
+      "doctor_input": "How do you know when you feel like you're disappointing him? What is it that's happening in that moment?",
+      "patient_response": "He's always complaining about how I don't call him. And he's always complaining that you're not giving time. He's always complaining that you give a lot of your time to your boyfriend.",
+      "context_before": "Client shared relationship difficulty with best friend",
+      "therapeutic_labels": {
+        "trt_stage": "stage_1_safety_building",
+        "trt_substate": "1.2_problem_and_body",
+        "situation_type": "emotional_pattern_inquiry",
+        "dr_q_technique": "how_do_you_know_questioning",
+        "client_presentation": "external_blame_pattern",
+        "outcome": "pattern_identified_needs_internal_focus"
+      },
+      "embedding_tags": [
+        "how_do_you_know", "emotional_pattern", "relationship_issue",
+        "disappointment_feeling", "external_complaints", "dr_q_inquiry",
+        "moment_specific_questioning", "pattern_exploration"
+      ],
+      "rag_retrieval_contexts": [
+        "dr_q_how_do_you_know_technique",
+        "relationship_disappointment_inquiry",
+        "emotional_pattern_exploration",
+        "external_blame_to_internal_awareness"
+      ]
+    }
+  ],
+
+  "embedding_structure": {
+    "content_embedding": "doctor_input + patient_response + context",
+    "categorical_embedding": "therapeutic_labels + embedding_tags",
+    "technique_embedding": "dr_q_technique + situation_type",
+    "retrieval_embedding": "rag_retrieval_contexts"
+  },
+
+  "rag_query_examples": {
+    "goal_clarification": {
+      "query": "client_states_vague_peaceful_goal",
+      "should_retrieve": "exchange_01_001",
+      "use_case": "when client says 'I want peace' but needs vision building"
+    },
+    "body_symptom_inquiry": {
+      "query": "client_mentions_body_pain_stress_connection",
+      "should_retrieve": "exchange_01_002",
+      "use_case": "when client mentions physical symptoms related to stress"
+    },
+    "present_moment_awareness": {
+      "query": "dr_q_present_moment_body_observation",
+      "should_retrieve": "exchange_01_003",
+      "use_case": "when building present moment somatic awareness"
+    },
+    "future_vision_building": {
+      "query": "dr_q_detailed_future_self_description",
+      "should_retrieve": "exchange_01_004",
+      "use_case": "when client needs detailed outcome vision"
+    },
+    "pattern_inquiry": {
+      "query": "dr_q_how_do_you_know_technique",
+      "should_retrieve": "exchange_01_005",
+      "use_case": "when client describes emotional patterns"
+    }
+  }
+}

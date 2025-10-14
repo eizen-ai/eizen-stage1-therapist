@@ -1,0 +1,233 @@
+{
+  "goal_statements": {
+    "patterns": [
+      "i want to", "i need to", "i hope to", "i would like", "i wish",
+      "feel peaceful", "feel better", "be happy", "less anxious",
+      "stop feeling", "not be", "get rid of"
+    ],
+    "classification": "clear_goal"
+  },
+
+  "external_blame": {
+    "patterns": [
+      "my boss", "my partner", "my family", "they make me", "because of them",
+      "he makes me feel", "she causes", "the situation makes me", "work is",
+      "people are", "everyone is", "nobody understands", "it's their fault"
+    ],
+    "classification": "external_blame"
+  },
+
+  "crisis_indicators": {
+    "patterns": [
+      "can't handle this", "want to hurt myself", "want to die",
+      "kill myself", "end it all", "can't go on", "feel like dying",
+      "having panic attack", "can't breathe", "feel like i'm dying",
+      "losing control", "going crazy", "can't cope"
+    ],
+    "classification": "crisis_indicators"
+  },
+
+  "trauma_content": {
+    "patterns": [
+      "when i was", "it reminds me of", "that happened when", "back then",
+      "my childhood", "abuse", "assault", "attacked", "violated",
+      "traumatic", "horrible thing", "worst experience", "never got over"
+    ],
+    "classification": "trauma_surfaces"
+  },
+
+  "present_moment": {
+    "patterns": [
+      "right now", "in this moment", "as i type", "currently feeling",
+      "at this moment", "as we talk", "here with you", "typing this"
+    ],
+    "classification": "present_focus"
+  },
+
+  "understanding": {
+    "patterns": [
+      "that makes sense", "i see", "i understand", "i get it",
+      "that explains", "now i understand", "that's helpful", "i see what you mean",
+      "exactly", "yes that's right", "that resonates"
+    ],
+    "classification": "understands_reframe"
+  },
+
+  "resistance": {
+    "patterns": [
+      "this won't work", "i've tried everything", "nothing helps", "impossible",
+      "can't see that", "don't believe", "this is stupid", "waste of time",
+      "tried therapy before", "doesn't work for me", "too damaged"
+    ],
+    "classification": "resistance"
+  },
+
+  "vague_responses": {
+    "patterns": [
+      "i don't know", "not sure", "maybe", "kind of", "sort of",
+      "it's complicated", "hard to explain", "not really", "i guess",
+      "whatever", "doesn't matter", "nothing specific"
+    ],
+    "classification": "vague_response"
+  },
+
+  "avoidance": {
+    "patterns": [
+      "long story", "it's complicated", "don't want to talk about",
+      "rather not say", "personal", "private", "skip that",
+      "change subject", "talk about something else", "not ready"
+    ],
+    "classification": "avoidance"
+  },
+
+  "analysis_mode": {
+    "patterns": [
+      "i think it's because", "the reason is", "it stems from", "probably",
+      "i analyze", "psychology says", "i've read that", "theory",
+      "intellectually", "logically", "rationally", "in my head"
+    ],
+    "classification": "analysis_mode"
+  },
+
+  "emotional_symptoms": {
+    "patterns": [
+      "feel anxious", "feel depressed", "feel overwhelmed", "feel stressed",
+      "feel hopeless", "feel angry", "feel sad", "feel scared",
+      "emotional", "feeling", "emotions", "mood"
+    ],
+    "classification": "emotional_symptoms"
+  },
+
+  "physical_symptoms": {
+    "patterns": [
+      "chest feels tight", "head hurts", "stomach churns", "tense",
+      "pain in", "aches", "tension", "tight", "heavy", "numb",
+      "tingling", "racing heart", "can't breathe", "sweating"
+    ],
+    "classification": "physical_symptoms"
+  },
+
+  "external_stressors": {
+    "patterns": [
+      "work stress", "relationship problems", "financial", "money",
+      "job", "boss", "family issues", "health problems", "school",
+      "pressure", "deadlines", "responsibilities"
+    ],
+    "classification": "external_stressors"
+  },
+
+  "acceptance": {
+    "patterns": [
+      "yes that would be okay", "yes that would be good", "that sounds good",
+      "i would like that", "yes please", "that would be wonderful",
+      "absolutely", "definitely", "for sure", "of course"
+    ],
+    "classification": "accepts_vision"
+  },
+
+  "rejection_vision": {
+    "patterns": [
+      "can't imagine that", "seems impossible", "too good to be true",
+      "never happen", "don't deserve", "not possible", "can't see it",
+      "unrealistic", "fantasy", "not for me"
+    ],
+    "classification": "rejects_vision"
+  },
+
+  "self_worth_issues": {
+    "patterns": [
+      "don't deserve", "not good enough", "not worthy", "i'm bad",
+      "i'm broken", "something wrong with me", "i'm damaged",
+      "not lovable", "worthless", "failure"
+    ],
+    "classification": "self_worth_issues"
+  },
+
+  "process_questions": {
+    "patterns": [
+      "how does this work", "what's the process", "will this work",
+      "how long", "what happens next", "how do you", "what if",
+      "how can", "is this going to", "what's the point"
+    ],
+    "classification": "process_questions"
+  },
+
+  "confusion": {
+    "patterns": [
+      "i don't understand", "this is confusing", "what do you mean",
+      "confused", "lost", "don't get it", "unclear", "doesn't make sense",
+      "explain", "clarify"
+    ],
+    "classification": "confusion"
+  },
+
+  "memory_issues": {
+    "patterns": [
+      "can't remember", "don't remember clearly", "fuzzy", "blank",
+      "blocked out", "repressed", "forgotten", "vague memory",
+      "bits and pieces", "not clear"
+    ],
+    "classification": "memory_issues"
+  },
+
+  "minimization": {
+    "patterns": [
+      "wasn't that bad", "others had it worse", "not a big deal",
+      "shouldn't complain", "could be worse", "minor", "small thing",
+      "overreacting", "being dramatic"
+    ],
+    "classification": "minimization"
+  },
+
+  "multiple_traumas": {
+    "patterns": [
+      "many things happened", "multiple times", "lots of experiences",
+      "pattern of", "repeatedly", "over and over", "several incidents",
+      "different occasions", "many traumas"
+    ],
+    "classification": "multiple_traumas"
+  },
+
+  "self_blame": {
+    "patterns": [
+      "my fault", "i caused it", "i should have", "if only i",
+      "i'm to blame", "i let it happen", "i could have stopped",
+      "i'm responsible", "i deserved it"
+    ],
+    "classification": "self_blame_interpretation"
+  },
+
+  "overwhelm_indicators": {
+    "patterns": [
+      "too much", "can't handle", "overwhelming", "drowning",
+      "suffocating", "crushing", "intense", "unbearable",
+      "too intense", "can't cope"
+    ],
+    "classification": "overwhelmed"
+  },
+
+  "positive_change": {
+    "patterns": [
+      "feels different", "lighter", "better", "less intense",
+      "not as bad", "changed", "shifted", "relief", "calmer",
+      "peaceful", "easier"
+    ],
+    "classification": "charge_reduction"
+  },
+
+  "no_change": {
+    "patterns": [
+      "still feels the same", "no different", "still bothers me",
+      "hasn't changed", "still intense", "still there", "same feeling"
+    ],
+    "classification": "no_change"
+  },
+
+  "privacy_concerns": {
+    "patterns": [
+      "don't want to share", "too personal", "private", "intimate",
+      "embarrassing", "shameful", "don't want details", "keep private"
+    ],
+    "classification": "privacy_concern"
+  }
+}
