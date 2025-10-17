@@ -27,9 +27,11 @@ class TRTSessionState:
             "psycho_education_provided": False,
             "education_understood": False,
 
-            # 1.2 Problem and Body criteria
+                # 1.2 Problem and Body criteria
             "problem_identified": False,
             "problem_content": "",
+            "emotion_identified": False,  # NEW: Track if client mentioned emotion (anger, sadness, etc.)
+            "emotion_content": "",  # NEW: Store the specific emotion mentioned
             "body_awareness_present": False,
             "present_moment_focus": False,
 
@@ -47,13 +49,28 @@ class TRTSessionState:
 
         # NEW: Track question repetition (Dr. Q never asks same question twice)
         self.body_questions_asked = 0
+        self.emotion_provided = False  # NEW: Track if client provided emotion word
         self.body_location_provided = False
         self.body_sensation_described = False
+        self.anything_else_asked = False  # NEW: Track if we asked "What else?" after body exploration
+        self.anything_else_count = 0  # NEW: Count how many times we've asked "What else?"
+        self.body_enquiry_cycles = 0  # NEW: Track body enquiry cycles (max 2)
+        self.problem_question_asked = False  # NEW: Track if "what's making it hard" was asked
         self.last_client_provided_info = None  # Track what info was just given
         self.pattern_inquiry_asked = False  # Track if "How do you know?" already asked
         self.pattern_response_received = False  # Track if client answered pattern question
         self.questions_asked_set = set()  # Track unique questions to prevent exact repetition
         self.last_question_asked = None  # Track the very last question
+
+        # Alpha sequence tracking
+        self.alpha_complete = False
+        self.alpha_started = False
+
+        # Session conclusion tracking
+        self.session_conclusion_given = False
+
+        # Track most recent emotion/problem for body location questions
+        self.most_recent_emotion_or_problem = None
 
     def add_exchange(self, client_input: str, therapist_response: str, navigation_output: Dict):
         """Add exchange to conversation history"""
@@ -76,6 +93,20 @@ class TRTSessionState:
         response_lower = therapist_response.lower()
         if "how do you know" in response_lower:
             self.pattern_inquiry_asked = True
+
+        # Track if "What else?" was asked (after body exploration)
+        if any(phrase in response_lower for phrase in ["what else", "anything else", "is there anything else", "anything i'm missing"]):
+            self.anything_else_asked = True
+            self.anything_else_count += 1
+
+            # When "What else?" is asked, complete one body enquiry cycle
+            # MAX 2 cycles allowed
+            if self.anything_else_count <= 2:
+                self.body_enquiry_cycles = self.anything_else_count
+
+        # Track if "what's making it hard" was asked
+        if any(phrase in response_lower for phrase in ["what's been making it hard", "what's been making it difficult", "what's been getting in the way"]):
+            self.problem_question_asked = True
 
         # Check if client answered pattern question
         if self.pattern_inquiry_asked and not self.pattern_response_received:
@@ -151,6 +182,38 @@ class TRTSessionState:
         """Detect what type of information client just provided"""
         client_lower = client_input.lower()
 
+        # Emotion words (check FIRST before body location - emotions are more specific)
+        emotion_words = ["angry", "anger", "sad", "sadness", "hurt", "hurting", "anxious", "anxiety",
+                        "stressed", "stress", "worried", "worry", "fear", "scared", "afraid", "frightened",
+                        "frustrated", "frustration", "annoyed", "irritated", "upset", "mad",
+                        "depressed", "depression", "down", "low", "overwhelmed", "helpless", "hopeless",
+                        "disappointed", "ashamed", "shame", "guilty", "guilt", "embarrassed",
+                        "lonely", "alone", "abandoned", "rejected", "betrayed", "confused", "lost"]
+
+        # Check for emotion FIRST and track it
+        for word in emotion_words:
+            if word in client_lower:
+                self.emotion_provided = True
+                # Track the most recent emotion for body location questions
+                self.most_recent_emotion_or_problem = word
+                return "emotion"
+
+        # Problem/stress words (check AFTER emotions but BEFORE body location)
+        # These are stressors that should be tracked for body location questions
+        problem_words = ["work", "job", "deadline", "deadlines", "boss", "school", "exam", "exams",
+                        "relationship", "relationships", "family", "money", "financial",
+                        "bully", "bullied", "bullying", "pressure", "pressured"]
+
+        # Check for problem words and track them
+        for word in problem_words:
+            if word in client_lower:
+                # Track the most recent problem for body location questions
+                # Use format "stress from [problem]" if stress mentioned, otherwise just the problem
+                if "stress" in client_lower or "stressful" in client_lower or "stressing" in client_lower:
+                    self.most_recent_emotion_or_problem = f"stress from {word}"
+                else:
+                    self.most_recent_emotion_or_problem = word
+
         # Body location words (expanded to accept more vague locations)
         location_words = ["chest", "head", "forehead", "shoulders", "neck", "stomach", "leg", "arm", "back",
                          "feet", "hands", "throat", "belly", "body", "heart", "gut", "face", "jaw",
@@ -177,6 +240,12 @@ class TRTSessionState:
         if any(phrase in client_lower for phrase in ["i don't know", "not sure", "don't understand"]):
             return "confusion"
 
+        # Check for "nothing more" responses (after "What else?" question)
+        if any(phrase in client_lower for phrase in ["nothing", "no", "that's it", "that's all",
+                                                      "nothing more", "nothing else", "nope", "nah",
+                                                      "i'm good", "all good"]):
+            return "nothing_more"
+
         return "general_response"
 
     def update_completion_status(self, client_input: str, navigation_output: Dict) -> List[str]:
@@ -188,11 +257,25 @@ class TRTSessionState:
         self.last_client_provided_info = self.detect_client_answer_type(client_input)
 
         # Check for goal stated (1.1)
+        # CRITICAL: Detect goal statements like "I want to feel X", "I would like to feel X"
         if not self.stage_1_completion["goal_stated"]:
-            if any(phrase in client_lower for phrase in [
-                "want to feel", "want to be", "need to", "hope to",
-                "peaceful", "calm", "happy", "better", "different"
-            ]):
+            # Goal phrases (explicit desire for a future state)
+            goal_phrases = [
+                "want to feel", "want to be", "would like to feel", "would like to be",
+                "need to feel", "need to be", "hope to feel", "hope to be",
+                "wanna feel", "wanna be", "wish to feel", "wish to be"
+            ]
+
+            # Goal state words (positive states client is seeking)
+            goal_states = [
+                "peaceful", "calm", "happy", "better", "different",
+                "good", "great", "relaxed", "comfortable", "safe",
+                "grounded", "centered", "balanced", "free"
+            ]
+
+            # Check for explicit goal phrases OR seeking positive state
+            if (any(phrase in client_lower for phrase in goal_phrases) or
+                any(state in client_lower for state in goal_states)):
                 self.stage_1_completion["goal_stated"] = True
                 self.stage_1_completion["goal_content"] = client_input
                 events.append("goal_stated")
@@ -228,6 +311,21 @@ class TRTSessionState:
                 if emotional_turns >= 2:
                     self.stage_1_completion["vision_accepted"] = True
                     events.append("vision_accepted_implicit")
+
+        # Check for emotion identified (1.2) - NEW LOGIC
+        # Emotion is identified when client mentions an emotion word
+        if not self.stage_1_completion["emotion_identified"]:
+            emotion_words = ["angry", "anger", "sad", "sadness", "hurt", "anxious", "anxiety",
+                            "stressed", "stress", "worried", "worry", "fear", "scared",
+                            "frustrated", "upset", "mad", "depressed", "down", "overwhelmed"]
+
+            for emotion in emotion_words:
+                if emotion in client_lower:
+                    self.stage_1_completion["emotion_identified"] = True
+                    self.stage_1_completion["emotion_content"] = emotion
+                    self.emotion_provided = True
+                    events.append("emotion_identified")
+                    break
 
         # Check for problem identified (1.2) - IMPROVED LOGIC
         # Problem is identified when client mentions stressor + body awareness together
@@ -343,11 +441,19 @@ class TRTSessionState:
             if (self.stage_1_completion["problem_identified"] and
                 self.stage_1_completion["body_awareness_present"] and
                 self.stage_1_completion["present_moment_focus"]):
-                return True, "1.3_readiness_assessment"
+                # Advance to 3.1 (Alpha Readiness), not 1.3
+                return True, "3.1_assess_readiness"
 
-        elif self.current_substate == "1.3_readiness_assessment":
+        elif self.current_substate == "3.1_assess_readiness":
             if (self.stage_1_completion["pattern_understood"] and
                 self.stage_1_completion["rapport_established"]):
+                # Advance to alpha sequence instead of completing immediately
+                return True, "3.2_alpha_sequence"
+
+        elif self.current_substate == "3.2_alpha_sequence":
+            # Alpha sequence completion is handled by AlphaSequence class
+            # Advance when alpha is complete
+            if hasattr(self, 'alpha_complete') and self.alpha_complete:
                 self.stage_1_completion["ready_for_stage_2"] = True
                 return True, "stage_1_complete"
 
@@ -407,9 +513,9 @@ class TRTSessionState:
                 "present_moment": "✅" if self.stage_1_completion["present_moment_focus"] else "⏳"
             }
 
-        # 1.3 Progress
-        if self.current_substate.startswith("1.3") or self.stage_1_completion["ready_for_stage_2"]:
-            progress["stage_1_progress"]["1.3_readiness_assessment"] = {
+        # 3.1 Progress (Alpha Readiness)
+        if self.current_substate.startswith("3.1") or self.stage_1_completion["ready_for_stage_2"]:
+            progress["stage_1_progress"]["3.1_assess_readiness"] = {
                 "pattern_understood": "✅" if self.stage_1_completion["pattern_understood"] else "⏳",
                 "ready_for_stage_2": "✅" if self.stage_1_completion["ready_for_stage_2"] else "⏳"
             }

@@ -9,6 +9,7 @@ from typing import List, Dict, Any, Tuple
 from sentence_transformers import SentenceTransformer
 import faiss
 from dataclasses import dataclass
+import logging
 
 @dataclass
 class RetrievalResult:
@@ -28,7 +29,12 @@ class TRTRAGSystem:
         self.model = SentenceTransformer(model_name)
         self.index = None
         self.embedding_data = []
+        self.metadata = []  # Initialize metadata list
         self.dimension = 384  # MiniLM embedding dimension
+
+        # Setup logger
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
 
     def load_embedding_dataset(self, dataset_path: str):
         """Load processed embedding dataset"""
@@ -200,27 +206,43 @@ class TRTRAGSystem:
         situation_type = navigation_output.get("situation_type", "")
         trt_stage = navigation_output.get("current_stage", "")
 
+        self.logger.info(f"🔍 RAG RETRIEVAL CALLED")
+        self.logger.info(f"   Query Context: {rag_query}")
+        self.logger.info(f"   Situation: {situation_type}")
+        self.logger.info(f"   Client Message: {client_message[:80]}...")
+        self.logger.info(f"   Max Examples: {max_examples}")
+
         # Try specific RAG query first
         results = []
         if rag_query:
             # Use specific RAG query as context filter
+            self.logger.info(f"   → Searching with context filter: {rag_query}")
             results = self.retrieve_similar_exchanges(
                 f"{client_message} {situation_type}",
                 top_k=max_examples,
                 context_filter=rag_query
             )
+            self.logger.info(f"   → Found {len(results)} results with context filter")
 
         # Fallback to general similarity search
         if len(results) < max_examples:
+            self.logger.info(f"   → Fallback: searching by therapeutic context")
             additional_results = self.retrieve_by_therapeutic_context(
                 trt_stage, situation_type, client_message, max_examples
             )
+            self.logger.info(f"   → Found {len(additional_results)} additional results")
 
             # Add unique results
             existing_ids = {r.exchange_id for r in results}
             for result in additional_results:
                 if result.exchange_id not in existing_ids and len(results) < max_examples:
                     results.append(result)
+
+        # Log results
+        self.logger.info(f"✅ RAG RETRIEVED {len(results)} EXAMPLES:")
+        for i, result in enumerate(results, 1):
+            self.logger.info(f"   {i}. Similarity: {result.similarity_score:.3f} | {result.exchange_id}")
+            self.logger.info(f"      Dr. Q: {result.doctor_response[:80]}...")
 
         # Format for dialogue agent
         few_shot_examples = []

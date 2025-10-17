@@ -77,7 +77,15 @@ class AlphaSequence:
         response_lower = client_response.lower()
 
         # Detect response type
-        if any(word in response_lower for word in ["calm", "calmer", "relaxed", "better", "good"]):
+        # Expanded list of positive/calm indicators including affirmations
+        positive_words = [
+            "calm", "calmer", "relaxed", "better", "good", "great", "nice", "peaceful",
+            "yes", "yeah", "yep", "okay", "ok", "right", "correct", "exactly",
+            "makes sense", "i feel", "feeling", "lighter", "easier", "comfortable",
+            "fine", "perfect", "wonderful", "excellent"
+        ]
+
+        if any(word in response_lower for word in positive_words):
             # Positive response - proceed
             self.checkpoint_responses[step] = "calm"
             self.completed_steps.append(step)

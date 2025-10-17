@@ -13,12 +13,14 @@ from datetime import datetime
 # Add parent directories to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'utils'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agents'))
+sys.path.insert(0, os.path.dirname(__file__))
 
-from session_state_manager import TRTSessionState
-from embedding_and_retrieval_setup import TRTRAGSystem
-from input_preprocessing import InputPreprocessor
-from ollama_llm_master_planning_agent import OllamaLLMMasterPlanningAgent
-from improved_ollama_dialogue_agent import ImprovedOllamaDialogueAgent
+from src.core.session_state_manager import TRTSessionState
+from src.core.alpha_sequence import AlphaSequence
+from src.utils.embedding_and_retrieval_setup import TRTRAGSystem
+from src.utils.input_preprocessing import InputPreprocessor
+from src.agents.ollama_llm_master_planning_agent import OllamaLLMMasterPlanningAgent
+from src.agents.improved_ollama_dialogue_agent import ImprovedOllamaDialogueAgent
 
 class ImprovedOllamaTRTSystem:
     """Improved Ollama TRT system following Dr. Q methodology"""
@@ -48,6 +50,9 @@ class ImprovedOllamaTRTSystem:
 
         # Initialize preprocessor
         self.preprocessor = InputPreprocessor()
+
+        # Initialize alpha sequence (will be activated when needed)
+        self.alpha_sequence = None
 
         print("✅ Improved Ollama TRT System Ready!")
         print("=" * 80)
@@ -86,15 +91,15 @@ class ImprovedOllamaTRTSystem:
                 # Don't increment if client JUST provided body info
                 if session_state.last_client_provided_info not in ["body_location", "sensation_quality"]:
                     session_state.body_questions_asked += 1
-                    print(f"   📍 Body questions asked: {session_state.body_questions_asked}/3")
+                    print(f"   📍 Body questions asked: {session_state.body_questions_asked}/5")
 
         # Check MAX body question limit (implement escape route)
-        if session_state.body_questions_asked >= 3:
+        if session_state.body_questions_asked >= 5:
             current_sub = navigation_output.get("current_substate")
             # Trigger escape in ANY state where body questions are being asked
             if current_sub in ["2.1_seek", "1.2_problem_and_body", "2.2_location", "2.3_sensation"]:
                 # MAX attempts reached → advance to readiness for alpha
-                print("   ⚠️  MAX body questions (3) reached. Triggering escape route...")
+                print("   ⚠️  MAX body questions (5) reached. Triggering escape route...")
                 print("   🚀 Advancing to alpha readiness (state 3.1)...")
 
                 # Force advancement to alpha readiness
@@ -104,7 +109,15 @@ class ImprovedOllamaTRTSystem:
                 navigation_output["situation_type"] = "readiness_for_alpha"
                 navigation_output["rag_query"] = "dr_q_ready"
                 navigation_output["ready_for_next"] = True
-                navigation_output["reasoning"] = "MAX body question attempts (3) - advancing to alpha sequence for body awareness development"
+                navigation_output["reasoning"] = "MAX body question attempts (5) - advancing to alpha sequence for body awareness development"
+
+        # Check if we need to handle alpha sequence
+        # IMPORTANT: Alpha sequence is managed by dialogue agent, not here
+        # The dialogue agent handles all alpha sequence logic including checkpoints
+        if session_state.current_substate == "3.2_alpha_sequence":
+            # Let dialogue agent handle it - don't interfere
+            print(f"🧘 Alpha sequence active...")
+            # Alpha is handled by dialogue agent, so we skip to dialogue generation
 
         # Step 2: Improved Dialogue Generation
         print(f"💬 Generating improved response...")
@@ -129,6 +142,56 @@ class ImprovedOllamaTRTSystem:
                 "dialogue_agent_ollama": not dialogue_output.get("fallback_used", False),
                 "master_confidence": navigation_output.get("llm_confidence", 0.0),
                 "dialogue_confidence": dialogue_output.get("llm_confidence", 0.0),
+                "body_questions_asked": session_state.body_questions_asked
+            }
+        }
+
+    def _handle_alpha_sequence(self, client_input: str, session_state: TRTSessionState, navigation_output: dict, start_time: float) -> dict:
+        """Handle alpha sequence execution"""
+
+        # Initialize alpha sequence if first time
+        if not session_state.alpha_started:
+            self.alpha_sequence = AlphaSequence()
+            result = self.alpha_sequence.start_sequence()
+            session_state.alpha_started = True
+
+            therapist_response = f"{result['instruction']} {result['checkpoint_question']}"
+
+        else:
+            # Process checkpoint response
+            result = self.alpha_sequence.process_checkpoint_response(client_input)
+            therapist_response = result['response']
+
+            if result.get('checkpoint_question'):
+                therapist_response += f" {result['checkpoint_question']}"
+
+            # Check if sequence is complete
+            if result.get('action') == 'sequence_complete':
+                session_state.alpha_complete = True
+                session_state.current_substate = "stage_1_complete"
+                print("   ✅ Alpha sequence complete!")
+
+        # Update session
+        session_state.add_exchange(
+            client_input=client_input,
+            therapist_response=therapist_response,
+            navigation_output=navigation_output
+        )
+
+        processing_time = time.time() - start_time
+
+        return {
+            "navigation": navigation_output,
+            "dialogue": {
+                "therapeutic_response": therapist_response,
+                "alpha_sequence_active": True,
+                "alpha_step": self.alpha_sequence.current_step.name if self.alpha_sequence else None
+            },
+            "session_progress": session_state.get_progress_summary(),
+            "processing_time": processing_time,
+            "therapist_response": therapist_response,
+            "system_status": {
+                "alpha_sequence": "active",
                 "body_questions_asked": session_state.body_questions_asked
             }
         }
@@ -209,7 +272,7 @@ def run_manual_test():
         if patient_input.lower() == 'status':
             print("\n📊 STATUS:")
             print(f"   State: {session_state.current_substate}")
-            print(f"   Body Q's Asked: {session_state.body_questions_asked}/3")
+            print(f"   Body Q's Asked: {session_state.body_questions_asked}/5")
             print(f"   Completion: {sum(1 for v in session_state.stage_1_completion.values() if v)}/11")
             print()
             turn -= 1
@@ -236,7 +299,7 @@ def run_manual_test():
 
             # Show brief status
             print(f"📊 [State: {output['navigation']['current_substate']}, "
-                  f"Body Q's: {session_state.body_questions_asked}/3, "
+                  f"Body Q's: {session_state.body_questions_asked}/5, "
                   f"Time: {output['processing_time']:.1f}s]")
             print()
 

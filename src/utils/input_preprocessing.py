@@ -324,6 +324,16 @@ class InputPreprocessor:
         """Detect past tense (vs present moment)"""
         text_lower = text.lower()
 
+        # CRITICAL: Don't trigger past tense if client is talking about NOW
+        # Example: "feeling good now, better than before" should NOT trigger
+        if any(present_word in text_lower for present_word in ['right now', 'now', 'currently', 'at the moment', 'today']):
+            # Client is talking about present moment, ignore past references
+            return {
+                'detected': False,
+                'phrases_found': [],
+                'note': 'Present moment indicators found - ignoring past references'
+            }
+
         detected_phrases = []
         for phrase in self.past_tense_phrases:
             if phrase in text_lower:
