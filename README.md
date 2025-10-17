@@ -18,6 +18,22 @@ This is a local AI-powered therapeutic system implementing **Stage 1** of Dr. Q'
 
 ---
 
+## 📐 Architecture & Presentation
+
+**New to the project?** Start here:
+
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - Complete technical architecture with diagrams, data flow, scalability analysis
+- **[Presentation Guide](docs/PRESENTATION_GUIDE.md)** - Present this system to stakeholders, investors, or technical teams
+- **[Quick Architecture Diagram](docs/QUICK_ARCHITECTURE_DIAGRAM.md)** - One-page visual reference with ASCII diagrams
+
+These documents explain:
+- How the system works (two-agent architecture, RAG, session management)
+- Why it's scalable (stateless API, Redis caching, horizontal scaling)
+- Technology stack and deployment options
+- Performance metrics and benchmarks
+
+---
+
 ## Key Features
 
 ### ✨ Dr. Q's Complete Methodology
@@ -39,50 +55,172 @@ This is a local AI-powered therapeutic system implementing **Stage 1** of Dr. Q'
 - **Self-harm detection** - Immediate safety protocol activation
 - **Crisis assessment** - Escalation pathways for acute situations
 
+### 🚀 API & Deployment
+- **FastAPI REST endpoints** - Full API for agentic workflow integration
+- **Docker containerized** - One-command deployment with Ollama
+- **Session management** - Stateful multi-session tracking
+- **Comprehensive monitoring** - Health checks and structured logging
+
 ---
 
 ## Project Structure
 
 ```
 Therapist2/
-├── src/                           # Primary source code
-│   ├── core/                      # Core system (session, ollama integration)
-│   ├── agents/                    # Master planning & dialogue agents
-│   └── utils/                     # Preprocessing, RAG, frameworks
+├── README.md                               # Main project overview (you are here)
+├── LICENSE                                 # Project license
+├── requirements.txt                        # Python dependencies
+├── Dockerfile                              # Docker container definition
+├── docker-compose.yml                      # Multi-service orchestration
+├── .dockerignore                           # Docker ignore rules
+├── .gitignore                              # Git ignore rules
+├── startup.sh                              # One-command startup script
 │
-├── config/                        # Configuration files
-│   └── STAGE1_COMPLETE.csv        # 31-state CSV state machine
+├── src/                                    # Source code
+│   ├── core/                               # Core system components
+│   │   ├── improved_ollama_system.py       # Main therapy orchestrator
+│   │   ├── session_state_manager.py        # Session state tracking
+│   │   └── alpha_sequence.py               # Alpha sequence logic
+│   ├── agents/                             # AI agent implementations
+│   │   ├── improved_ollama_master_planning_agent.py  # Navigation decisions
+│   │   └── improved_ollama_dialogue_agent.py    # Dialogue generation (RAG+LLM)
+│   ├── utils/                              # Utility modules
+│   │   ├── input_preprocessing.py          # Input processing & safety
+│   │   ├── embedding_and_retrieval_setup.py # RAG system (FAISS)
+│   │   ├── psycho_education.py             # Therapeutic education
+│   │   ├── language_techniques.py          # Dr. Q's language patterns
+│   │   ├── engagement_tracker.py           # Engagement monitoring
+│   │   ├── no_harm_framework.py            # Safety protocols
+│   │   └── vision_language_templates.py    # Vision-building prompts
+│   └── api/                                # FastAPI REST endpoints
+│       ├── main.py                         # FastAPI application
+│       ├── models.py                       # Request/response models
+│       └── therapy_system_wrapper.py       # API-system integration
 │
-├── data/                          # RAG data & embeddings
-│   ├── transcripts/               # 100+ real therapy session transcripts
-│   └── embeddings/                # FAISS vector database
+├── config/                                 # Configuration files
+│   ├── STAGE1_COMPLETE.csv                 # 31-state CSV state machine
+│   └── system/                             # System configuration
 │
-├── tests/                         # Test suite
-│   └── test_improved_system.py    # System integration tests
+├── data/                                   # Data files
+│   ├── transcripts/                        # 100+ therapy transcripts
+│   ├── embeddings/                         # FAISS vector database
+│   │   ├── trt_rag_index.faiss             # Vector index (1.5MB)
+│   │   └── trt_rag_metadata.json           # Metadata (1.1MB)
+│   └── processed/                          # Processed data
+│       └── processed_exchanges/            # Clean therapy exchanges
 │
-├── logs/                          # Session logs (JSON format)
-├── docs/                          # Comprehensive documentation
-│   ├── planning/                  # Architecture & design docs
-│   └── reports/                   # Analysis & implementation reports
+├── docs/                                   # 📚 Documentation (organized)
+│   ├── README.md                           # Documentation index
+│   ├── deployment/                         # 🚀 Deployment guides
+│   │   ├── DEPLOYMENT_GUIDE.md             # Complete deployment instructions
+│   │   ├── CONTAINERIZATION_SUMMARY.md     # Docker setup details
+│   │   ├── PORT_CONFIGURATION.md           # Port configuration
+│   │   └── QUICK_START.md                  # Quick start guide
+│   ├── development/                        # 💻 Development docs
+│   │   ├── AGENT_ARCHITECTURE.md           # Agent system architecture
+│   │   ├── AGENTIC_WORKFLOW_GUIDE.md       # Agent workflow patterns
+│   │   ├── AGENTIC_PLATFORM_DESIGN.md      # Platform design
+│   │   ├── API_DOCUMENTATION.md            # API reference
+│   │   ├── CONTRIBUTING.md                 # Contribution guidelines
+│   │   └── GITHUB_READY_CHECKLIST.md       # Pre-release checklist
+│   ├── implementation/                     # 🔧 Implementation details
+│   │   ├── ALL_FIXES_IMPLEMENTED.md        # Complete fix log (12 fixes)
+│   │   ├── IMPLEMENTATION_SUMMARY.md       # System overview
+│   │   ├── HYBRID_RAG_IMPLEMENTATION_COMPLETE.md  # RAG hybrid approach
+│   │   ├── RAG_IMPLEMENTATION_STATUS.md    # RAG usage patterns
+│   │   ├── EMBEDDING_CLEANUP_SUMMARY.md    # Embedding cleanup
+│   │   └── MANUAL_OBJECTS_TO_CREATE.md     # Setup requirements
+│   ├── testing/                            # 🧪 Testing documentation
+│   │   ├── MANUAL_TESTING_GUIDE.md         # Manual testing procedures
+│   │   ├── TESTING_QUICK_START.md          # Quick testing guide
+│   │   └── QA_REPORT.md                    # QA results
+│   ├── reference/                          # 📖 Quick references
+│   │   ├── QUICK_REFERENCE.md              # ⭐ Command reference
+│   │   └── UNIFIED_ANALYSIS_REPORT.md      # System analysis (10k+ words)
+│   └── [examples/, guides/, planning/, reference_materials/, reports/]  # Other docs
 │
-├── archive/                       # Historical versions (reference only)
-├── venv/                          # Python virtual environment
+├── scripts/                                # Utility scripts
+│   ├── rebuild_embeddings_from_clean_data.py  # Rebuild RAG embeddings
+│   └── test_new_embeddings.py              # Test embeddings
 │
-├── requirements.txt               # Python dependencies
-├── .gitignore                     # Git ignore rules
-└── README.md                      # This file
+├── examples/                               # Usage examples
+│   ├── test_api_client.py                  # Python API client
+│   ├── agentic_workflow.py                 # Multi-agent workflow
+│   └── simple_agent_demo.py                # Simple agent integration
+│
+├── tests/                                  # Test suite
+│   ├── test_improved_system.py             # System integration tests
+│   └── [other test files]                  # Additional tests
+│
+├── logs/                                   # Session logs (JSON format)
+└── venv/                                   # Python virtual environment (gitignored)
 ```
+
+**Key Changes:**
+- ✅ **Clean root directory** - Only 8 essential files (config, deployment)
+- 📚 **Organized docs/** - Documentation categorized by purpose
+- 🔧 **scripts/** - Utility scripts separated from source
+- 📖 **Easy navigation** - See [docs/README.md](docs/README.md) for full documentation index
 
 ---
 
-## Installation
+## Installation & Deployment
 
-### Prerequisites
+### Option 1: Docker (Recommended - FastAPI)
+
+**One-Command Startup:**
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd Therapist2
+
+# Start entire system (Ollama + FastAPI)
+chmod +x startup.sh
+./startup.sh
+```
+
+This will:
+- Start Ollama service in Docker
+- Start TRT FastAPI application
+- Pull LLaMA 3.1 model automatically
+- Run health checks
+
+**Access Points:**
+- **API Documentation:** http://localhost:8090/docs
+- **ReDoc:** http://localhost:8090/redoc
+- **Health Check:** http://localhost:8090/health
+
+**API Example:**
+```bash
+# Create session
+curl -X POST http://localhost:8090/api/v1/session/create \
+  -H "Content-Type: application/json" \
+  -d '{"client_id": "test"}'
+
+# Send input (replace SESSION_ID)
+curl -X POST http://localhost:8090/api/v1/session/SESSION_ID/input \
+  -H "Content-Type: application/json" \
+  -d '{"user_input": "I am feeling stressed"}'
+```
+
+**Python Client:**
+```bash
+python examples/test_api_client.py
+```
+
+See [docs/deployment/DEPLOYMENT_GUIDE.md](docs/deployment/DEPLOYMENT_GUIDE.md) and [docs/development/API_DOCUMENTATION.md](docs/development/API_DOCUMENTATION.md) for complete details.
+
+---
+
+### Option 2: Manual Setup (Python)
+
+**Prerequisites:**
 - **Python 3.8+**
 - **Ollama** installed and running locally
 - **LLaMA 3.1 model** (8B recommended)
 
-### Setup Steps
+**Setup Steps:**
 
 1. **Clone the repository:**
    ```bash
@@ -113,20 +251,69 @@ Therapist2/
    ollama serve
    ```
 
-5. **Verify Ollama is running:**
+5. **Start FastAPI (for API access):**
    ```bash
-   curl http://localhost:11434/api/generate -d '{
-     "model": "llama3.1",
-     "prompt": "Say hello",
-     "stream": false
-   }'
+   cd src
+   uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+6. **OR run direct CLI test:**
+   ```bash
+   cd src/core
+   python improved_ollama_system.py
    ```
 
 ---
 
 ## Usage
 
-### Quick Start - Manual Test Session
+### FastAPI Endpoints (Recommended)
+
+#### 1. Create Session
+```bash
+curl -X POST http://localhost:8090/api/v1/session/create \
+  -H "Content-Type: application/json" \
+  -d '{"client_id": "client_123"}'
+```
+
+#### 2. Process Input
+```bash
+curl -X POST http://localhost:8090/api/v1/session/SESSION_ID/input \
+  -H "Content-Type: application/json" \
+  -d '{"user_input": "I am feeling really stressed"}'
+```
+
+#### 3. Get Status
+```bash
+curl http://localhost:8090/api/v1/session/SESSION_ID/status
+```
+
+#### Python Client Example
+```python
+import requests
+
+# Create session
+response = requests.post("http://localhost:8090/api/v1/session/create")
+session_id = response.json()["session_id"]
+
+# Send input
+response = requests.post(
+    f"http://localhost:8090/api/v1/session/{session_id}/input",
+    json={"user_input": "I'm feeling stressed"}
+)
+print(response.json()["therapist_response"])
+```
+
+**Complete Example:**
+```bash
+python examples/test_api_client.py
+```
+
+See [docs/development/API_DOCUMENTATION.md](docs/development/API_DOCUMENTATION.md) for full endpoint reference.
+
+---
+
+### CLI Test Session (Alternative)
 
 Run an interactive test session where you play the role of the client:
 
@@ -141,22 +328,16 @@ python improved_ollama_system.py
 - Type `quit` to end session
 - Press `Ctrl+C` to interrupt gracefully
 
-**Example Session:**
-```
-🩺 THERAPIST: "Hello! What brings you in today?"
-👤 YOU: I'm feeling really stressed and overwhelmed
-
-🩺 THERAPIST: "What do we want our time together to accomplish?"
-👤 YOU: I want to feel calm and peaceful
-
-... [session continues through TRT Stage 1]
-```
+---
 
 ### Running Tests
 
 ```bash
 # Run system integration tests
 python tests/test_improved_system.py
+
+# Test API client
+python examples/test_api_client.py
 ```
 
 ### Viewing Session Logs
@@ -172,9 +353,9 @@ ls -lt logs/*.json | head -1
 
 ## Recent Fixes (2025-10-14)
 
-**Status:** ✅ **ALL 10 CRITICAL FIXES COMPLETE**
+**Status:** ✅ **ALL 12 CRITICAL FIXES COMPLETE**
 
-See [ALL_FIXES_IMPLEMENTED.md](ALL_FIXES_IMPLEMENTED.md) for detailed documentation of all fixes.
+See [docs/implementation/ALL_FIXES_IMPLEMENTED.md](docs/implementation/ALL_FIXES_IMPLEMENTED.md) for detailed documentation of all fixes.
 
 ### Summary of Latest Fixes:
 
@@ -189,6 +370,10 @@ See [ALL_FIXES_IMPLEMENTED.md](ALL_FIXES_IMPLEMENTED.md) for detailed documentat
 **Fix #9:** Generic psycho-education language - Changed from "your brain" to "the brain", added random animal examples (zebra/lion, deer/predator, rabbit/hawk, gazelle/cheetah)
 
 **Fix #10:** 🚀 **REQUEST PERMISSION BEFORE ALPHA** - Two-step process: readiness confirmation (3.1) → permission request (3.1.5) → alpha start (3.2)
+
+**Fix #11:** State naming consistency - Fixed state naming mismatch (1.3 → 3.1_assess_readiness) across all components
+
+**Fix #12:** Past tense detection refinement - Ignore past references when "NOW" is present in client input
 
 ### Expected Session Flow (Post-Fixes):
 ```
@@ -284,17 +469,22 @@ python3 improved_ollama_system.py
 ### Completed ✅
 - [x] Stage 1 implementation (31 states)
 - [x] RAG system with 100+ transcripts
-- [x] Critical bug fixes
-- [x] Documentation
+- [x] All 12 critical bug fixes
+- [x] FastAPI REST endpoints
+- [x] Docker containerization
+- [x] Comprehensive documentation
 
 ### In Progress 🔄
 - [ ] QA testing and validation
 - [ ] Pilot testing with users
+- [ ] Production deployment
 
 ### Planned 📋
-- [ ] Stage 2 implementation
-- [ ] Multi-session tracking
+- [ ] Stage 2 implementation (trauma processing)
+- [ ] Multi-session persistence (Redis/PostgreSQL)
 - [ ] Enhanced alpha sequence
+- [ ] Authentication & authorization
+- [ ] Rate limiting & monitoring
 
 ---
 

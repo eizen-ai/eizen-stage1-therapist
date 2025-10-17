@@ -1,0 +1,51 @@
+services:
+  # Redis for session storage (self-hosted, private)
+  redis:
+    image: redis:7-alpine
+    container_name: trt-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme} --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - trt-internal
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # TRT AI Therapist application
+  # Note: Uses host Ollama installation on localhost:11434
+  trt-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trt-app
+    network_mode: host
+    volumes:
+      - ./logs:/app/logs
+      - ./data/embeddings:/app/data/embeddings
+    environment:
+      - OLLAMA_BASE_URL=http://localhost:11434
+      - OLLAMA_MODEL=llama3.1
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-changeme}@localhost:6379
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+networks:
+  trt-internal:
+    driver: bridge
+
+volumes:
+  redis-data:

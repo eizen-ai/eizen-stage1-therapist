@@ -6,8 +6,8 @@ Uses local Ollama with Llama 3.1
 import json
 import requests
 import os
-from session_state_manager import TRTSessionState
-from input_preprocessing import InputPreprocessor
+from src.core.session_state_manager import TRTSessionState
+from src.utils.input_preprocessing import InputPreprocessor
 import logging
 
 class OllamaLLMMasterPlanningAgent:
@@ -87,35 +87,25 @@ class OllamaLLMMasterPlanningAgent:
                     "rule_override": True
                 }
 
-        # RULE 2: If goal just stated → MUST build vision (not explore problem yet)
+        # RULE 2: If goal stated but vision NOT accepted → MUST build vision (ABSOLUTE PRIORITY)
+        # This prevents skipping vision building and jumping to psycho-education
         if substate == "1.1_goal_and_vision" and completion["goal_stated"] and not completion["vision_accepted"]:
-            # Check if goal was just stated in recent events
-            recent_goal_stated = False
-            for e in events:
-                if isinstance(e, dict) and e.get("event") == "goal_stated":
-                    recent_goal_stated = True
-                    break
-                elif isinstance(e, str) and e == "goal_stated":
-                    recent_goal_stated = True
-                    break
-
-            if recent_goal_stated:
-                self.logger.info("🎯 OVERRIDE: Goal just stated → build_vision")
-                return {
-                    "current_stage": session_state.current_stage,
-                    "current_substate": substate,
-                    "navigation_decision": "build_vision",
-                    "situation_type": "goal_stated_needs_vision",
-                    "rag_query": "dr_q_future_self_vision_building",
-                    "completion_status": completion,
-                    "ready_for_next": False,
-                    "advancement_blocked_by": ["vision_not_accepted"],
-                    "reasoning": "STRICT RULE: Build vision after goal stated",
-                    "recent_events": events,
-                    "llm_reasoning": False,
-                    "fallback_used": False,
-                    "rule_override": True
-                }
+            self.logger.info("🎯 OVERRIDE: Goal stated, vision not accepted → build_vision")
+            return {
+                "current_stage": session_state.current_stage,
+                "current_substate": substate,
+                "navigation_decision": "build_vision",
+                "situation_type": "goal_stated_needs_vision",
+                "rag_query": "dr_q_future_self_vision_building",
+                "completion_status": completion,
+                "ready_for_next": False,
+                "advancement_blocked_by": ["vision_not_accepted"],
+                "reasoning": "STRICT RULE: Build vision after goal stated (ALWAYS)",
+                "recent_events": events,
+                "llm_reasoning": False,
+                "fallback_used": False,
+                "rule_override": True
+            }
 
         # RULE 3: If asking about problem but goal/vision not complete → redirect to goal
         if substate == "1.1_goal_and_vision":
@@ -139,6 +129,120 @@ class OllamaLLMMasterPlanningAgent:
                             "fallback_used": False,
                             "rule_override": True
                         }
+
+        # RULE 4: If in 1.2_problem_and_body and problem NOT identified yet → MUST explore problem FIRST
+        # This ensures we ask "What's been making it hard?" before jumping to body location
+        # BUT: Only ask ONCE! Check if we've already asked a problem question
+        # ALSO: Don't apply if client is already providing body information (emotion, location, sensation)
+        if substate == "1.2_problem_and_body" and not completion["problem_identified"]:
+            # Check if client is already providing body-related information
+            # If they are, let them continue - don't interrupt to ask about problem again
+            client_providing_body_info = (
+                session_state.emotion_provided or
+                session_state.body_location_provided or
+                session_state.body_sensation_described or
+                session_state.last_client_provided_info in ["emotion", "body_location", "sensation_quality"]
+            )
+
+            # Only apply this rule if:
+            # 1. Client is NOT already providing body info
+            # 2. We haven't asked about the problem yet
+            if not client_providing_body_info:
+                # Check if we've already asked about the problem
+                # Look at last 3 exchanges to see if therapist asked a problem question
+                problem_question_asked = False
+                if hasattr(session_state, 'conversation_history') and len(session_state.conversation_history) > 0:
+                    for exchange in session_state.conversation_history[-3:]:
+                        therapist_response = exchange.get('therapist_response', '').lower()
+                        # Check for problem inquiry phrases
+                        problem_phrases = ["what's been making it hard", "what's been making it difficult",
+                                         "what's been getting in the way", "been making it hard"]
+                        if any(phrase in therapist_response for phrase in problem_phrases):
+                            problem_question_asked = True
+                            break
+
+                # Only apply this rule if we haven't asked about the problem yet
+                if not problem_question_asked:
+                    self.logger.info("🎯 OVERRIDE: In state 1.2, problem not identified → explore_problem FIRST (initial ask)")
+                    return {
+                        "current_stage": session_state.current_stage,
+                        "current_substate": substate,
+                        "navigation_decision": "explore_problem",
+                        "situation_type": "problem_needs_exploration",
+                        "rag_query": "dr_q_problem_construction",
+                        "completion_status": completion,
+                        "ready_for_next": False,
+                        "advancement_blocked_by": ["problem_not_identified"],
+                        "reasoning": "STRICT RULE: Explore problem FIRST before body exploration (state 1.2 entry, first ask)",
+                        "recent_events": events,
+                        "llm_reasoning": False,
+                        "fallback_used": False,
+                        "rule_override": True
+                    }
+
+        # RULE 5: CRITICAL - If client says "nothing else" after body enquiry → ADVANCE TO 3.1_assess_readiness
+        # This happens when client responds "nothing" / "that's it" / "all good" to "What else should I know?"
+        # MAX 2 body enquiry cycles OR client says "nothing else" → move to readiness assessment
+        if substate == "1.2_problem_and_body":
+            # Check if client said "nothing else" OR we've done 2 body enquiry cycles
+            client_said_nothing_else = any(phrase in client_lower for phrase in [
+                "nothing", "no", "that's it", "that's all", "nothing more", "nothing else",
+                "nope", "nah", "i'm good", "all good", "im good", "that is it"
+            ])
+
+            # Also check if we've reached max body enquiry cycles (2)
+            reached_max_cycles = session_state.body_enquiry_cycles >= 2
+
+            # Check if we just asked "What else?" (therapist's last question)
+            just_asked_what_else = False
+            if hasattr(session_state, 'conversation_history') and len(session_state.conversation_history) > 0:
+                last_exchange = session_state.conversation_history[-1]
+                last_therapist_response = last_exchange.get('therapist_response', '').lower()
+                what_else_phrases = ["what else", "anything else", "is there anything else", "anything i'm missing"]
+                just_asked_what_else = any(phrase in last_therapist_response for phrase in what_else_phrases)
+
+            # Advance to 3.1 if: (client said nothing else AND we asked) OR reached max cycles
+            if (client_said_nothing_else and just_asked_what_else) or reached_max_cycles:
+                self.logger.info(f"🎯 OVERRIDE: Client said 'nothing else' OR max cycles ({session_state.body_enquiry_cycles}/2) → ADVANCE to 3.1_assess_readiness")
+
+                # Update substate to 3.1
+                session_state.current_substate = "3.1_assess_readiness"
+
+                return {
+                    "current_stage": session_state.current_stage,
+                    "current_substate": "3.1_assess_readiness",  # ADVANCE!
+                    "navigation_decision": "assess_readiness",
+                    "situation_type": "readiness_for_alpha",
+                    "rag_query": "dr_q_ready",
+                    "completion_status": completion,
+                    "ready_for_next": True,
+                    "advancement_blocked_by": [],
+                    "reasoning": f"STRICT RULE: Client said 'nothing else' OR reached max cycles ({session_state.body_enquiry_cycles}/2) → Advancing to readiness assessment",
+                    "recent_events": events,
+                    "llm_reasoning": False,
+                    "fallback_used": False,
+                    "rule_override": True
+                }
+
+        # RULE 6: If in 3.1_assess_readiness → NO MORE BODY QUESTIONS, assess readiness only
+        # This prevents looping back to body exploration after we've already done it
+        if substate == "3.1_assess_readiness":
+            self.logger.info("🎯 OVERRIDE: In state 3.1 (readiness) → assess_readiness (NO body questions)")
+            return {
+                "current_stage": session_state.current_stage,
+                "current_substate": substate,
+                "navigation_decision": "assess_readiness",
+                "situation_type": "readiness_for_alpha",
+                "rag_query": "dr_q_ready",
+                "completion_status": completion,
+                "ready_for_next": True,
+                "advancement_blocked_by": [],
+                "reasoning": "STRICT RULE: In state 3.1, assess readiness for alpha (NO more body questions)",
+                "recent_events": events,
+                "llm_reasoning": False,
+                "fallback_used": False,
+                "rule_override": True
+            }
 
         # No override needed - let LLM decide
         return None
