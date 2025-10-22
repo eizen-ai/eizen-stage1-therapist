@@ -148,3 +148,25 @@ data/transcripts/*.docx
 
 # Archive directory (development artifacts)
 archive/
+
+# ============================================
+# Files removed from public GitHub repo
+# (kept locally for internal development)
+# ============================================
+
+# Sensitive patient data
+data/transcripts/*.txt
+
+# Internal development docs
+docs/implementation/
+docs/planning/
+docs/reports/
+
+# Development test files
+test_detailed_logging.py
+scripts/test_new_embeddings.py
+tests/demo_body_enquiry_logic.py
+
+# Keep local development notes
+NOTES_LOCAL.md
+TODO_LOCAL.md
