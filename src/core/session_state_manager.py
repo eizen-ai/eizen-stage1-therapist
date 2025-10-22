@@ -95,14 +95,24 @@ class TRTSessionState:
             self.pattern_inquiry_asked = True
 
         # Track if "What else?" was asked (after body exploration)
+        # IMPORTANT: Only count "what else" during body exploration, NOT during readiness (3.1)
         if any(phrase in response_lower for phrase in ["what else", "anything else", "is there anything else", "anything i'm missing"]):
-            self.anything_else_asked = True
-            self.anything_else_count += 1
+            # Check if we're in body exploration substates (not readiness)
+            body_exploration_substates = ["1.2_problem_and_body", "2.1_seek", "2.2_location", "2.3_sensation"]
 
-            # When "What else?" is asked, complete one body enquiry cycle
-            # MAX 2 cycles allowed
-            if self.anything_else_count <= 2:
-                self.body_enquiry_cycles = self.anything_else_count
+            if self.current_substate in body_exploration_substates:
+                # This is a body exploration "what else" - count it
+                self.anything_else_asked = True
+                self.anything_else_count += 1
+
+                # When "What else?" is asked, complete one body enquiry cycle
+                # MAX 2 cycles allowed
+                if self.anything_else_count <= 2:
+                    self.body_enquiry_cycles = self.anything_else_count
+            elif self.current_substate == "3.1_assess_readiness":
+                # This is readiness "what else" - just set flag, don't increment cycle
+                self.anything_else_asked = True
+                # Don't increment anything_else_count or body_enquiry_cycles here
 
         # Track if "what's making it hard" was asked
         if any(phrase in response_lower for phrase in ["what's been making it hard", "what's been making it difficult", "what's been getting in the way"]):
@@ -133,6 +143,21 @@ class TRTSessionState:
         # Remove common variations
         q = q.replace("that's right.", "").replace("yeah.", "").strip()
         return q
+
+    def _reset_body_exploration_flags(self):
+        """Reset body exploration flags to start a new enquiry cycle
+
+        This is called when:
+        - Client responded to "What else?" with new information
+        - We're starting cycle 2 (body_enquiry_cycles < 2)
+
+        We reset the flags but keep the cycle counter so we track we're in cycle 2
+        """
+        self.anything_else_asked = False  # Reset so "What else?" can be asked again
+        self.body_location_provided = False  # Reset to ask about location again
+        self.body_sensation_described = False  # Reset to ask about sensation again
+        # DON'T reset body_enquiry_cycles - it tracks total cycles completed
+        # DON'T reset emotion_provided - emotion persists across cycles
 
     def was_question_asked_recently(self, question: str) -> bool:
         """Check if this question was asked in last 3 turns"""
@@ -181,6 +206,18 @@ class TRTSessionState:
     def detect_client_answer_type(self, client_input: str) -> str:
         """Detect what type of information client just provided"""
         client_lower = client_input.lower()
+
+        # CRITICAL: Check if client responded to "What else?" with new information
+        # If so, reset flags to start a new body enquiry cycle
+        if self.anything_else_asked and self.body_enquiry_cycles < 2:
+            # Check if client provided substantive new information (not "nothing")
+            nothing_phrases = ["nothing", "no", "that's it", "that's all", "nothing more",
+                             "nothing else", "nope", "nah", "i'm good", "all good", "im good"]
+            client_said_nothing = any(phrase in client_lower for phrase in nothing_phrases)
+
+            # If client provided new info (not "nothing"), reset cycle flags to start fresh
+            if not client_said_nothing and len(client_input.split()) > 2:
+                self._reset_body_exploration_flags()
 
         # Emotion words (check FIRST before body location - emotions are more specific)
         emotion_words = ["angry", "anger", "sad", "sadness", "hurt", "hurting", "anxious", "anxiety",
@@ -327,65 +364,57 @@ class TRTSessionState:
                     events.append("emotion_identified")
                     break
 
-        # Check for problem identified (1.2) - IMPROVED LOGIC
-        # Problem is identified when client mentions stressor + body awareness together
-        # OR when we've been in 1.2 state for 3+ exchanges with body + stressor mentioned
+        # Check for problem identified (1.2) - SIMPLIFIED & MORE RESPONSIVE
+        # Problem is identified when client mentions a stressor (work, stress, etc.)
+        # We don't need to wait for body awareness - that's separate
         if not self.stage_1_completion["problem_identified"]:
-            # Immediate identification: stressor mentioned
+            # Immediate identification: stressor mentioned in current input
             stressor_mentioned = any(word in client_lower for word in [
                 "work", "stress", "pressure", "deadline", "boss", "job",
                 "relationship", "family", "money", "health", "anxiety",
-                "worry", "overwhelm", "difficult", "hard", "problem", "issue"
+                "worry", "overwhelm", "difficult", "hard", "problem", "issue",
+                "overwork", "tired", "exhaust", "frustrated", "annoyed"
             ])
 
-            # If we're in 1.2 substate and have body awareness + any stressor mentioned in history
+            # Also check for specific problem statements
+            problem_statements = [
+                "because", "can't", "cant", "not able", "unable to",
+                "making it hard", "getting in the way", "stopping me"
+            ]
+            has_problem_statement = any(phrase in client_lower for phrase in problem_statements)
+
+            # If we're in 1.2 substate and stressor is mentioned, mark as identified
             if self.current_substate == "1.2_problem_and_body":
-                # Check last 5 exchanges for problem indicators
-                problem_indicators = 0
-                has_stressor = False
-                has_body_reference = False
-
-                for ex in self.conversation_history[-5:]:
-                    client_msg = ex.get('client_input', '').lower()
-
-                    # Check for stressor mention
-                    if any(word in client_msg for word in [
-                        "work", "stress", "pressure", "deadline", "boss",
-                        "relationship", "people", "worry", "anxious", "overwhelm"
-                    ]):
-                        has_stressor = True
-                        problem_indicators += 1
-
-                    # Check for body reference
-                    if any(word in client_msg for word in [
-                        "chest", "head", "stomach", "shoulders", "tight", "ache",
-                        "heavy", "pain", "feel it", "feeling"
-                    ]):
-                        has_body_reference = True
-                        problem_indicators += 1
-
-                # Problem identified if: body awareness + stressor mentioned + at least 3 exchanges
-                if (self.stage_1_completion["body_awareness_present"] and
-                    (has_stressor or stressor_mentioned) and
-                    len(self.conversation_history) >= 3):
+                # IMMEDIATE: If user mentioned a stressor, problem is identified
+                if stressor_mentioned:
                     self.stage_1_completion["problem_identified"] = True
-                    self.stage_1_completion["problem_content"] = "Client stress/body pattern identified"
+                    self.stage_1_completion["problem_content"] = f"Stressor identified: {client_input[:50]}"
                     events.append("problem_identified")
 
-                # OR if we have enough problem indicators (2+) in recent history
-                elif problem_indicators >= 2:
+                # OR if user gave a problem explanation (with "because", "can't", etc.)
+                elif has_problem_statement and len(client_input.split()) > 3:
                     self.stage_1_completion["problem_identified"] = True
-                    self.stage_1_completion["problem_content"] = "Problem pattern established through exchanges"
+                    self.stage_1_completion["problem_content"] = f"Problem explained: {client_input[:50]}"
                     events.append("problem_identified")
 
-                # OR if we have body location + sensation + been in state 1.2 for 6+ turns
-                # This handles clients who provide body info but vague problem descriptions
-                elif (self.body_location_provided and
-                      self.body_sensation_described and
-                      len(self.conversation_history) >= 8):
-                    self.stage_1_completion["problem_identified"] = True
-                    self.stage_1_completion["problem_content"] = "Body awareness established with sufficient context"
-                    events.append("problem_identified")
+                # OR check recent conversation history for stressor patterns
+                elif len(self.conversation_history) > 0:
+                    # Check last 3 exchanges for stressor mentions
+                    has_stressor_in_history = False
+                    for ex in self.conversation_history[-3:]:
+                        client_msg = ex.get('client_input', '').lower()
+                        if any(word in client_msg for word in [
+                            "work", "stress", "pressure", "boss", "job",
+                            "worry", "anxious", "overwhelm", "problem", "hard"
+                        ]):
+                            has_stressor_in_history = True
+                            break
+
+                    # If stressor was mentioned in recent history, mark as identified
+                    if has_stressor_in_history:
+                        self.stage_1_completion["problem_identified"] = True
+                        self.stage_1_completion["problem_content"] = "Stressor mentioned in conversation"
+                        events.append("problem_identified")
 
         # Check for body awareness (1.2)
         if not self.stage_1_completion["body_awareness_present"]:

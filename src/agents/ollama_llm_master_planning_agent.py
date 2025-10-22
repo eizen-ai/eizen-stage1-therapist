@@ -8,7 +8,12 @@ import requests
 import os
 from src.core.session_state_manager import TRTSessionState
 from src.utils.input_preprocessing import InputPreprocessor
+from src.utils.prompt_loader import get_prompt_loader
+from src.utils.detailed_logger import get_detailed_logger
 import logging
+
+# Initialize detailed logger
+detailed_logger = get_detailed_logger("MasterPlanningAgent")
 
 class OllamaLLMMasterPlanningAgent:
     """Ollama-powered Master Planning Agent using local Llama 3.1"""
@@ -32,6 +37,9 @@ class OllamaLLMMasterPlanningAgent:
 
         # Initialize input preprocessor
         self.preprocessor = InputPreprocessor()
+
+        # Initialize prompt loader
+        self.prompt_loader = get_prompt_loader()
 
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
@@ -71,6 +79,11 @@ class OllamaLLMMasterPlanningAgent:
             # Check if this is first turn or early turns
             if len(session_state.conversation_history) <= 2:
                 self.logger.info("🎯 OVERRIDE: Early session, goal not stated → clarify_goal")
+                detailed_logger.log_rule_based_decision(
+                    rule_name="RULE 1: Goal Clarification Required",
+                    condition="In substate 1.1_goal_and_vision AND goal not stated AND early session",
+                    action="Navigate to clarify_goal"
+                )
                 return {
                     "current_stage": session_state.current_stage,
                     "current_substate": substate,
@@ -91,6 +104,11 @@ class OllamaLLMMasterPlanningAgent:
         # This prevents skipping vision building and jumping to psycho-education
         if substate == "1.1_goal_and_vision" and completion["goal_stated"] and not completion["vision_accepted"]:
             self.logger.info("🎯 OVERRIDE: Goal stated, vision not accepted → build_vision")
+            detailed_logger.log_rule_based_decision(
+                rule_name="RULE 2: Vision Building Required",
+                condition="Goal stated but vision not accepted",
+                action="Navigate to build_vision"
+            )
             return {
                 "current_stage": session_state.current_stage,
                 "current_substate": substate,
@@ -146,12 +164,13 @@ class OllamaLLMMasterPlanningAgent:
 
             # Only apply this rule if:
             # 1. Client is NOT already providing body info
-            # 2. We haven't asked about the problem yet
+            # 2. We haven't asked about the problem yet (use flag, not history)
             if not client_providing_body_info:
-                # Check if we've already asked about the problem
-                # Look at last 3 exchanges to see if therapist asked a problem question
-                problem_question_asked = False
-                if hasattr(session_state, 'conversation_history') and len(session_state.conversation_history) > 0:
+                # Check the session state flag (more reliable than scanning history)
+                problem_question_asked = getattr(session_state, 'problem_question_asked', False)
+
+                # Also check conversation history as backup (in case flag wasn't set)
+                if not problem_question_asked and len(session_state.conversation_history) > 0:
                     for exchange in session_state.conversation_history[-3:]:
                         therapist_response = exchange.get('therapist_response', '').lower()
                         # Check for problem inquiry phrases
@@ -225,8 +244,59 @@ class OllamaLLMMasterPlanningAgent:
                 }
 
         # RULE 6: If in 3.1_assess_readiness → NO MORE BODY QUESTIONS, assess readiness only
-        # This prevents looping back to body exploration after we've already done it
+        # EXCEPTION: Allow body enquiry cycle 2 if client provided NEW problem during readiness
+        # This prevents looping back to body exploration UNLESS we're in cycle 2
         if substate == "3.1_assess_readiness":
+            # Check if we're in the middle of body enquiry cycle 2
+            # Indicators: last_client_provided_info shows body exploration in progress or NEW emotion/problem
+            in_body_cycle_2 = session_state.last_client_provided_info in [
+                "emotion",             # NEW emotion mentioned during readiness → start cycle 2
+                "body_location",       # Just gave location → ask sensation
+                "sensation_quality",   # Just gave sensation → ask present moment or what else
+                "new_problem_mentioned"  # Just mentioned new problem → start cycle 2
+            ]
+
+            # If in cycle 2, allow body exploration to continue
+            if in_body_cycle_2:
+                self.logger.info(f"🔄 EXCEPTION TO RULE 6: In state 3.1 but client in body cycle 2 (last_info: {session_state.last_client_provided_info})")
+                self.logger.info("   → Allowing body exploration to continue for cycle 2")
+
+                # Determine navigation based on what was just provided
+                if session_state.last_client_provided_info == "emotion":
+                    # New emotion mentioned → ask where they feel it
+                    decision = "body_awareness_inquiry"
+                    rag_query = "dr_q_body_location"
+                elif session_state.last_client_provided_info == "new_problem_mentioned":
+                    decision = "body_awareness_inquiry"
+                    rag_query = "dr_q_body_location"
+                elif session_state.last_client_provided_info == "body_location":
+                    decision = "body_symptoms_exploration"
+                    rag_query = "dr_q_sensation"
+                elif session_state.last_client_provided_info == "sensation_quality":
+                    decision = "present_moment_focus"
+                    rag_query = "dr_q_present_moment"
+                else:
+                    decision = "body_awareness_inquiry"
+                    rag_query = "dr_q_body_location"
+
+                return {
+                    "current_stage": session_state.current_stage,
+                    "current_substate": substate,
+                    "navigation_decision": decision,
+                    "situation_type": "body_enquiry_cycle_2",
+                    "rag_query": rag_query,
+                    "completion_status": completion,
+                    "ready_for_next": False,
+                    "advancement_blocked_by": [],
+                    "reasoning": f"CYCLE 2: Client in body exploration cycle 2 (last_info: {session_state.last_client_provided_info})",
+                    "recent_events": events,
+                    "llm_reasoning": False,
+                    "fallback_used": False,
+                    "rule_override": True,
+                    "in_cycle_2": True
+                }
+
+            # Otherwise, normal readiness assessment (NO body questions)
             self.logger.info("🎯 OVERRIDE: In state 3.1 (readiness) → assess_readiness (NO body questions)")
             return {
                 "current_stage": session_state.current_stage,
@@ -326,6 +396,12 @@ class OllamaLLMMasterPlanningAgent:
     def _call_ollama(self, prompt: str) -> str:
         """Call Ollama API"""
         try:
+            detailed_logger.log_llm_call(
+                prompt_type="Navigation Decision",
+                model=self.model,
+                prompt_preview=prompt[:300]
+            )
+
             response = requests.post(
                 self.api_endpoint,
                 json={
@@ -342,7 +418,9 @@ class OllamaLLMMasterPlanningAgent:
 
             if response.status_code == 200:
                 result = response.json()
-                return result.get('response', '')
+                llm_response = result.get('response', '')
+                detailed_logger.log_llm_response(llm_response[:200])
+                return llm_response
             else:
                 raise Exception(f"Ollama returned status {response.status_code}: {response.text}")
 
@@ -365,52 +443,22 @@ class OllamaLLMMasterPlanningAgent:
                 recent_history += f"Turn {i}: Client: \"{exchange.get('client_input', '')}\"\n"
                 recent_history += f"         Therapist: \"{exchange.get('therapist_response', '')}\"\n\n"
 
-        prompt = f"""You are Dr. Q, an expert TRT (Trauma Resolution Therapy) therapist. Make a navigation decision for this therapeutic moment.
+        # Load prompt template from config
+        prompt_template = self.prompt_loader.get_prompt('master_planning_agent', 'therapeutic_reasoning')
 
-CURRENT CONTEXT:
-- Stage: {session_state.current_stage}
-- Substate: {substate}
-- Client: "{client_input}"
-- Emotional State: {processed_input['emotional_state']}
-
-COMPLETION STATUS:
-- Goal Stated: {"✅" if completion.get('goal_stated', False) else "❌"}
-- Vision Accepted: {"✅" if completion.get('vision_accepted', False) else "❌"}
-- Problem Identified: {"✅" if completion.get('problem_identified', False) else "❌"}
-- Body Awareness: {"✅" if completion.get('body_awareness_present', False) else "❌"}
-- Present Focus: {"✅" if completion.get('present_moment_focus', False) else "❌"}
-
-RECENT CONVERSATION:
-{recent_history}
-
-TRT RULES:
-1. Stage 1.1: Establish goal, build future vision
-2. Stage 1.2: Explore problem, develop body awareness
-3. Stage 1.3: Assess pattern understanding, readiness for Stage 2
-4. Always prioritize present-moment body awareness
-5. Use "How do you know?" for pattern exploration
-6. Don't advance until criteria met
-
-NAVIGATION OPTIONS:
-- clarify_goal, build_vision, explore_problem, body_awareness_inquiry, pattern_inquiry, assess_readiness, general_inquiry
-
-SITUATION TYPES:
-- goal_needs_clarification, goal_stated_needs_vision, problem_needs_exploration, body_symptoms_exploration, explore_trigger_pattern, readiness_for_stage_2, general_therapeutic_inquiry
-
-RAG QUERIES:
-- dr_q_goal_clarification, dr_q_future_self_vision_building, dr_q_problem_construction, dr_q_body_symptom_present_moment_inquiry, dr_q_how_do_you_know_technique, dr_q_transition_to_intervention, general_dr_q_approach
-
-Respond in JSON format:
-{{
-    "reasoning": "detailed therapeutic reasoning",
-    "navigation_decision": "one navigation option",
-    "situation_type": "one situation type",
-    "rag_query": "one rag query",
-    "ready_for_next": true/false,
-    "advancement_blocked_by": ["blocking factors"],
-    "confidence": 0.0-1.0,
-    "therapeutic_focus": "what to focus on"
-}}"""
+        # Format template with variables
+        prompt = prompt_template.format(
+            current_stage=session_state.current_stage,
+            current_substate=substate,
+            client_input=client_input,
+            emotional_state=processed_input['emotional_state'],
+            goal_stated="✅" if completion.get('goal_stated', False) else "❌",
+            vision_accepted="✅" if completion.get('vision_accepted', False) else "❌",
+            problem_identified="✅" if completion.get('problem_identified', False) else "❌",
+            body_awareness="✅" if completion.get('body_awareness_present', False) else "❌",
+            present_focus="✅" if completion.get('present_moment_focus', False) else "❌",
+            recent_history=recent_history
+        )
 
         return prompt
 

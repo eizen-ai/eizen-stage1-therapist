@@ -19,7 +19,12 @@ from src.utils.engagement_tracker import EngagementTracker
 from src.utils.vision_language_templates import VisionLanguageTemplates
 from src.utils.psycho_education import PsychoEducation
 from src.core.alpha_sequence import AlphaSequence
+from src.utils.prompt_loader import get_prompt_loader
+from src.utils.detailed_logger import get_detailed_logger
 import logging
+
+# Initialize detailed logger
+detailed_logger = get_detailed_logger("DialogueAgent")
 
 class ImprovedOllamaDialogueAgent:
     """Improved Ollama Dialogue Agent following Dr. Q's real methodology"""
@@ -40,6 +45,9 @@ class ImprovedOllamaDialogueAgent:
         self.psycho_education = PsychoEducation()
         self.alpha_sequence = AlphaSequence()
 
+        # Initialize prompt loader
+        self.prompt_loader = get_prompt_loader()
+
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
@@ -56,6 +64,10 @@ class ImprovedOllamaDialogueAgent:
 
         # PRIORITY 1: Check for self-harm/crisis (HIGHEST PRIORITY)
         if navigation_output.get('self_harm_detected', {}).get('detected', False):
+            detailed_logger.log_dialogue_decision_point(
+                decision_type="PRIORITY 1: Self-Harm Detection",
+                reasoning="Self-harm detected - using no-harm framework response"
+            )
             return self.no_harm_framework.generate_no_harm_response(
                 client_input,
                 navigation_output['self_harm_detected'],
@@ -104,8 +116,11 @@ class ImprovedOllamaDialogueAgent:
                 # Update to permission stage
                 session_state.current_substate = "3.1.5_alpha_permission"
 
+                # Load alpha permission from config
+                response = self.prompt_loader.get_redirect('alpha_permission')
+
                 return {
-                    "therapeutic_response": "Okay. I'm going to guide you through a brief process. Are you ready?",
+                    "therapeutic_response": response,
                     "technique_used": "alpha_permission_request",
                     "examples_used": 0,
                     "rag_similarity_scores": [],
@@ -147,8 +162,10 @@ class ImprovedOllamaDialogueAgent:
                 }
             else:
                 # Client hesitant or unclear - reassure and re-ask
+                response = self.prompt_loader.get_redirect('alpha_permission_reassurance')
+
                 return {
-                    "therapeutic_response": "It's very simple, just a few minutes. I'll guide you through it. Ready to try?",
+                    "therapeutic_response": response,
                     "technique_used": "alpha_permission_reassurance",
                     "examples_used": 0,
                     "rag_similarity_scores": [],
@@ -177,7 +194,7 @@ class ImprovedOllamaDialogueAgent:
         # PRIORITY 9: Check for vision building (use rule-based for consistency)
         if navigation_output.get('navigation_decision') == 'build_vision':
             self.logger.info("📋 BYPASSING RAG: Using rule-based vision building")
-            return self._generate_vision_building_response(session_state)
+            return self._generate_vision_building_response(session_state, client_input)
 
         # PRIORITY 10: Check for explore_problem when problem NOT yet identified (state 1.2 entry)
         # BUT: Only ask about problem if we haven't asked before AND user hasn't already provided problem info
@@ -221,11 +238,11 @@ class ImprovedOllamaDialogueAgent:
                     self.logger.info("📋 BYPASSING RAG: Asking about problem (state 1.2 entry, first time)")
                     return self._generate_problem_inquiry_response(session_state)
 
-        # PRIORITY 11: Check for assess_readiness in state 3.1 (NO more body questions)
+        # PRIORITY 11: Check for assess_readiness in state 3.1 (with NEW problem detection)
         if (navigation_output.get('navigation_decision') == 'assess_readiness' and
             navigation_output.get('current_substate') == '3.1_assess_readiness'):
             self.logger.info("📋 BYPASSING RAG: Assessing readiness for alpha (state 3.1)")
-            return self._generate_readiness_assessment_response(session_state)
+            return self._generate_readiness_assessment_response(session_state, client_input)
 
         # Get RAG examples
         self.logger.info(f"🎯 USING RAG for decision: {navigation_output.get('navigation_decision')}")
@@ -242,9 +259,12 @@ class ImprovedOllamaDialogueAgent:
         body_q_count = session_state.body_questions_asked
 
         # ESCAPE CONDITIONS - Prevent loops and ensure progress
+        # EXCEPTION: Don't escape if we're in body enquiry cycle 2
+        in_cycle_2 = navigation_output.get('in_cycle_2', False)
+
         should_escape_body = (
             body_q_count >= 5 or  # Hit body question limit
-            current_substate == '3.1_assess_readiness' or  # Moved to readiness
+            (current_substate == '3.1_assess_readiness' and not in_cycle_2) or  # Moved to readiness (unless cycle 2)
             current_substate == '3.2_alpha_sequence' or  # In alpha sequence
             self.alpha_sequence.sequence_active  # Alpha is active
         )
@@ -599,11 +619,13 @@ class ImprovedOllamaDialogueAgent:
                 if not session_state.stage_1_completion.get("present_moment_focus", False) and "feeling now" not in str(session_state.questions_asked_set).lower():
                     next_question = candidate_q
                 else:
-                    # Already asked about present moment OR already established, move to problem exploration
+                    # Already asked about present moment OR already established
+                    # Check if we're ready to move to readiness assessment
                     if not session_state.stage_1_completion.get("problem_identified"):
                         next_question = "What's been making it hard?"
                     else:
-                        next_question = "Tell me more about that."
+                        # Problem identified + present moment focus → move to readiness
+                        next_question = "What haven't I understood? Is there more I should know?"
 
         elif session_state.last_client_provided_info == "nothing_more":
             # Client said "nothing" or "that's it" (likely after "What else?" question)
@@ -635,8 +657,10 @@ class ImprovedOllamaDialogueAgent:
                 # Vision should be built by rule, but if we're here, ask confirming question
                 next_question = "Does that make sense to you?"
             elif not completion.get("psycho_education_provided", False):
-                # After vision accepted, move toward psycho-education (handled by priority system)
-                next_question = "Tell me more about that."
+                # After vision accepted, psycho-education will be provided by PRIORITY 6
+                # If we're in affirmation logic and psycho-education not yet provided,
+                # this shouldn't happen - but if it does, move to problem inquiry
+                next_question = "So what's been making it hard for you?"
             elif not completion["body_awareness_present"]:
                 # Check if problem was just mentioned - if so, shift to emotion/body inquiry
                 if problem_mentioned_in_response:
@@ -665,7 +689,8 @@ class ImprovedOllamaDialogueAgent:
                     if not completion["problem_identified"]:
                         next_question = "What's been making it hard?"
                     else:
-                        next_question = "Tell me more about that."
+                        # Problem identified + present moment focus → move to readiness
+                        next_question = "What haven't I understood? Is there more I should know?"
             else:
                 # All criteria met - move toward readiness
                 next_question = "What haven't I understood? Is there more I should know?"
@@ -755,8 +780,8 @@ class ImprovedOllamaDialogueAgent:
     def _generate_thinking_redirect_response(self, client_input: str) -> dict:
         """Redirect from thinking mode to feeling mode (Dr. Q style)"""
 
-        # Dr. Q is gentle but direct when redirecting from thinking to feeling
-        response = "Yeah, I hear you thinking about it. Rather than thinking, what are you FEELING right now? Where do you feel that?"
+        # Load redirect response from config
+        response = self.prompt_loader.get_redirect('thinking_mode')
 
         return {
             "therapeutic_response": response,
@@ -772,8 +797,8 @@ class ImprovedOllamaDialogueAgent:
     def _generate_past_redirect_response(self, client_input: str) -> dict:
         """Redirect from past tense to present moment (Dr. Q style)"""
 
-        # Dr. Q acknowledges the past but brings to present
-        response = "Got it. That was then. Right now, in this moment, what are you FEELING? What's happening in your body?"
+        # Load redirect response from config
+        response = self.prompt_loader.get_redirect('past_tense')
 
         return {
             "therapeutic_response": response,
@@ -861,40 +886,9 @@ class ImprovedOllamaDialogueAgent:
     def _detect_emotion_with_llm(self, client_input: str) -> dict:
         """Use LLM to detect emotion and generate appropriate acknowledgment"""
 
-        prompt = f"""Analyze this client's opening statement for their emotional state.
-
-Client said: "{client_input}"
-
-Determine:
-1. emotional_state: Is it "positive", "negative", or "neutral"?
-2. intensity: "low", "medium", or "high"
-3. acknowledgment: A brief, warm acknowledgment in Dr. Q's style
-
-CRITICAL RULES:
-- If client says "I WANT to feel X" or "I WOULD LIKE to feel X" → This is NEUTRAL (expressing a desired GOAL, not current emotion)
-- Positive CURRENT emotions: Use PRESENT tense → "I hear you're feeling [emotion]"
-- Negative CURRENT emotions: Use PAST tense → "I hear you've been feeling [emotion]"
-- Neutral/unclear/goals: Generic → "I hear you"
-- Keep acknowledgment to 1 sentence, natural and warm
-- Don't include questions in acknowledgment, just the acknowledgment part
-
-Respond ONLY with valid JSON (no extra text):
-{{"emotional_state": "positive/negative/neutral", "intensity": "low/medium/high", "acknowledgment": "acknowledgment text"}}
-
-Examples (STUDY THESE CAREFULLY):
-"I'm not feeling that good" → {{"emotional_state": "negative", "intensity": "medium", "acknowledgment": "I hear you've not been feeling that good."}}
-"I am feeling sad" → {{"emotional_state": "negative", "intensity": "low", "acknowledgment": "I hear you've been feeling sad."}}
-"I feel stressed" → {{"emotional_state": "negative", "intensity": "medium", "acknowledgment": "I hear you've been feeling stressed."}}
-"I want to feel calm" → {{"emotional_state": "neutral", "intensity": "low", "acknowledgment": "I hear you."}}
-"I would like to feel good" → {{"emotional_state": "neutral", "intensity": "low", "acknowledgment": "I hear you."}}
-"I want to feel peaceful" → {{"emotional_state": "neutral", "intensity": "low", "acknowledgment": "I hear you."}}
-"yes i want to feel calm and peaceful" → {{"emotional_state": "neutral", "intensity": "low", "acknowledgment": "I hear you."}}
-"I'm extremely stressed" → {{"emotional_state": "negative", "intensity": "high", "acknowledgment": "I hear you've been extremely stressed."}}
-"I'm feeling great today" → {{"emotional_state": "positive", "intensity": "medium", "acknowledgment": "I hear you're feeling great today, that's wonderful!"}}
-"I feel good" → {{"emotional_state": "positive", "intensity": "medium", "acknowledgment": "I hear you're feeling good."}}
-"Just not good" → {{"emotional_state": "negative", "intensity": "medium", "acknowledgment": "I hear you've not been feeling good."}}
-
-Respond with JSON only:"""
+        # Load prompt template from config
+        prompt_template = self.prompt_loader.get_prompt('dialogue_agent', 'emotion_detection')
+        prompt = prompt_template.format(client_input=client_input)
 
         try:
             # Call Ollama
@@ -979,10 +973,103 @@ Respond with JSON only:"""
             "fallback_used": False
         }
 
-    def _generate_readiness_assessment_response(self, session_state: TRTSessionState) -> dict:
-        """Generate readiness assessment for alpha (state 3.1) - rule-based"""
+    def _generate_readiness_assessment_response(self, session_state: TRTSessionState, client_input: str = "") -> dict:
+        """Generate readiness assessment for alpha (state 3.1) - with NEW problem detection"""
 
-        # Dr. Q's readiness assessment questions (varied)
+        # CRITICAL: Check if client is providing NEW problem/emotion
+        # If yes, start a NEW body enquiry cycle instead of just asking "what else?"
+        client_lower = client_input.lower().strip() if client_input else ""
+
+        # Detect NEW problems/stressors/emotions mentioned
+        stressor_words = [
+            "work", "job", "boss", "deadline", "pressure", "stress", "overwhelm",
+            "family", "parent", "spouse", "partner", "child", "sibling", "argument",
+            "relationship", "friend", "conflict", "fight",
+            "money", "financial", "debt", "bills",
+            "health", "pain", "sick", "illness",
+            "school", "study", "exam", "grade",
+            "bully", "bullied", "bullying"  # ADDED: bullying as stressor
+        ]
+
+        emotion_words = [
+            "anxious", "anxiety", "worry", "worried", "nervous",
+            "sad", "sadness", "depressed", "down", "unhappy",
+            "angry", "anger", "mad", "frustrated", "irritated", "annoyed",
+            "hurt", "pain", "ache", "suffering",
+            "scared", "fear", "afraid", "terrified",
+            "lonely", "alone", "isolated",
+            "guilty", "shame", "ashamed",
+            "overwhelmed", "exhausted", "tired", "drained",
+            "hate", "hatred"  # ADDED: hate as strong emotion
+        ]
+
+        # Check if client is mentioning a NEW stressor or emotion
+        new_stressor_detected = any(word in client_lower for word in stressor_words)
+        new_emotion_detected = any(word in client_lower for word in emotion_words)
+
+        # Also check for phrases indicating new information (not "nothing")
+        has_new_information = (
+            len(client_lower.split()) > 3 and  # More than just "no" or "nothing"
+            "nothing" not in client_lower and
+            "no" != client_lower.strip() and
+            "nope" not in client_lower and
+            "all good" not in client_lower
+        )
+
+        # If NEW problem/emotion detected, start NEW body enquiry cycle
+        # BUT only if we haven't reached MAX 2 cycles
+        if (new_stressor_detected or new_emotion_detected) and has_new_information and session_state.body_enquiry_cycles < 2:
+            # Extract the emotion or problem mentioned
+            detected_emotion = None
+            detected_problem = None
+
+            for emotion in emotion_words:
+                if emotion in client_lower:
+                    detected_emotion = emotion
+                    break
+
+            for stressor in stressor_words:
+                if stressor in client_lower:
+                    detected_problem = stressor
+                    break
+
+            # Construct body location question (Dr. Q style with options)
+            if detected_emotion:
+                response = f"Where do you feel that {detected_emotion} in your body? Chest? Head? Shoulders?"
+                reasoning = f"NEW emotion detected: {detected_emotion} - starting body enquiry cycle 2"
+            elif detected_problem:
+                response = f"Where do you feel that in your body? Is it in your chest, head, shoulders, stomach?"
+                reasoning = f"NEW problem detected: {detected_problem} - starting body enquiry cycle 2"
+            else:
+                response = "Where do you feel that in your body? Chest, head, shoulders?"
+                reasoning = "NEW information provided - starting body enquiry cycle 2"
+
+            self.logger.info(f"🔄 READINESS PHASE: Detected new problem/emotion - starting NEW body enquiry cycle")
+            self.logger.info(f"   Detected emotion: {detected_emotion}, problem: {detected_problem}")
+
+            # Mark that we're starting a second body enquiry cycle
+            # Reset last_client_provided_info to track new cycle
+            session_state.last_client_provided_info = "new_problem_mentioned"
+
+            # Increment body enquiry cycle counter if we haven't reached max
+            # We're in readiness (after cycle 1), so this is cycle 2
+            if session_state.body_enquiry_cycles < 2:
+                session_state.body_enquiry_cycles = 2  # Mark as cycle 2
+                self.logger.info(f"   Starting cycle {session_state.body_enquiry_cycles}/2")
+
+            return {
+                "therapeutic_response": response,
+                "technique_used": "body_enquiry_cycle_2",
+                "examples_used": 0,
+                "rag_similarity_scores": [],
+                "navigation_reasoning": reasoning,
+                "llm_confidence": 0.95,
+                "llm_reasoning": "New problem detected during readiness - starting second body enquiry cycle",
+                "fallback_used": False,
+                "new_cycle_started": True
+            }
+
+        # Otherwise, continue with regular readiness questions
         import random
         readiness_questions = [
             "What haven't I understood? Is there more I should know?",
@@ -1004,7 +1091,7 @@ Respond with JSON only:"""
             "fallback_used": False
         }
 
-    def _generate_vision_building_response(self, session_state: TRTSessionState) -> dict:
+    def _generate_vision_building_response(self, session_state: TRTSessionState, client_input: str = "") -> dict:
         """Generate vision building response (rule-based for consistency)"""
 
         # Extract goal from session state - handle both dict and direct access
@@ -1015,6 +1102,37 @@ Respond with JSON only:"""
                 goal_content = getattr(session_state.stage_1_completion, "goal_content", "")
         except:
             goal_content = ""
+
+        # CRITICAL FIX: Check if current input contains a goal clarification
+        # When user says "calm", "peaceful", "at peace" etc., use THAT as the goal instead
+        client_lower = client_input.lower() if client_input else ""
+
+        # Common goal keywords that might appear in current input
+        goal_keywords = {
+            "peace": "peaceful",
+            "peaceful": "peaceful",
+            "calm": "calm",
+            "happy": "happy",
+            "grounded": "grounded",
+            "relaxed": "relaxed",
+            "free": "free",
+            "strong": "strong",
+            "confident": "confident",
+            "at ease": "at ease",
+            "lighter": "lighter",
+            "centered": "centered"
+        }
+
+        # Check if user just provided a clear goal in their input
+        clarified_goal = None
+        for keyword, state in goal_keywords.items():
+            if keyword in client_lower:
+                clarified_goal = state
+                # Update session state with the clarified goal
+                if isinstance(session_state.stage_1_completion, dict):
+                    session_state.stage_1_completion["goal_content"] = f"want to be {state}"
+                self.logger.info(f"[VISION_BUILDING] ✅ User clarified goal to: '{state}' - updating session state")
+                break
 
         # Extract key words from goal
         goal_lower = goal_content.lower() if goal_content else ""
@@ -1035,8 +1153,9 @@ Respond with JSON only:"""
         # Vague goals that need clarification (Dr. Q style - offer options)
         vague_goals = ["good", "better", "fine", "okay", "alright", "well", "normal"]
 
-        # Check if goal is vague - if so, ask for clarification with options
-        is_vague = any(vague in goal_lower for vague in vague_goals)
+        # Check if goal is vague - BUT ONLY if user didn't just clarify it!
+        # If user just said "calm" or "peaceful", we should build vision, not ask for clarification again
+        is_vague = any(vague in goal_lower for vague in vague_goals) and not clarified_goal
 
         if is_vague:
             # Offer Dr. Q's vision options
@@ -1061,16 +1180,25 @@ Respond with JSON only:"""
                 "fallback_used": False
             }
 
-        # Find what they want
-        desired_state = None
-        for key, value in goal_mappings.items():
-            if key in goal_lower:
-                desired_state = value
-                break
+        # Find what they want - prioritize clarified goal from current input
+        desired_state = clarified_goal  # Use clarified goal if available
+
+        if not desired_state:
+            # Fall back to checking stored goal_content
+            for key, value in goal_mappings.items():
+                if key in goal_lower:
+                    desired_state = value
+                    break
 
         # If still no specific state found, use generic
         if not desired_state:
             desired_state = "at ease"
+
+        # Log vision building
+        if clarified_goal:
+            self.logger.info(f"[VISION_BUILDING] ✅ Building vision with clarified goal: '{desired_state}'")
+        else:
+            self.logger.info(f"[VISION_BUILDING] 💬 Building vision with stored goal: '{desired_state}'")
 
         # Build ELABORATE vision response like Dr. Q - 4-5 sentences with multiple descriptors
         import random
@@ -1126,6 +1254,12 @@ Respond with JSON only:"""
     def _call_ollama(self, prompt: str) -> str:
         """Call Ollama API"""
         try:
+            detailed_logger.log_llm_call(
+                prompt_type="Dialogue Generation",
+                model=self.model,
+                prompt_preview=prompt[:300]
+            )
+
             response = requests.post(
                 self.api_endpoint,
                 json={
@@ -1142,7 +1276,9 @@ Respond with JSON only:"""
 
             if response.status_code == 200:
                 result = response.json()
-                return result.get('response', '')
+                llm_response = result.get('response', '')
+                detailed_logger.log_llm_response(llm_response[:200])
+                return llm_response
             else:
                 raise Exception(f"Ollama returned status {response.status_code}: {response.text}")
 
@@ -1240,20 +1376,12 @@ Respond with JSON only:"""
                 if doctor_response:
                     rag_examples_text += f"{i}. \"{doctor_response}\"\n"
 
-        return f"""You are Dr. Q. Client mentioned a problem/stress.
-
-CLIENT: "{client_input}"
-
-{rag_examples_text}
-
-Dr. Q's style (ELABORATIVE - COMBINED emotion + body location with options):
-- "When you feel stress/anxiety/pressure like that, what do you notice in your body? Where do you feel it?"
-- "And when you say stressed, what do you find yourself feeling? Where in your body do you feel it - chest, head, shoulders?"
-- "As you think about that, what emotions come up for you? Where do you notice them in your body?"
-
-CRITICAL: Ask about BOTH emotion/feeling AND body location together in an elaborative way with multiple options.
-
-YOUR RESPONSE (just the therapist's words, 1-2 sentences - ask BOTH emotion AND location elaboratively):"""
+        # Load template from config
+        template = self.prompt_loader.get_prompt('dialogue_agent', 'emotion_inquiry')
+        return template.format(
+            client_input=client_input,
+            rag_examples=rag_examples_text
+        )
 
     def _construct_emotion_to_body_prompt(self, client_input: str, session_state: TRTSessionState, rag_examples: list) -> str:
         """Focused prompt when client just provided emotion - now ask where in body"""
@@ -1270,20 +1398,13 @@ YOUR RESPONSE (just the therapist's words, 1-2 sentences - ask BOTH emotion AND 
                 if doctor_response:
                     rag_examples_text += f"{i}. \"{doctor_response}\"\n"
 
-        return f"""You are Dr. Q. Client just mentioned emotion/problem: {emotion_content}
-
-CLIENT: "{client_input}"
-
-{rag_examples_text}
-
-Dr. Q's style (ELABORATIVE - multiple options and clarifications):
-- "When you feel that {emotion_content}, where in your body do you notice it? What location comes to mind first?"
-- "And where is that {emotion_content} in your body? Where do you feel it - chest, head, shoulders?"
-- "Where do you notice that {emotion_content}? What part of your body?"
-
-CRITICAL: Use the EXACT emotion/problem word "{emotion_content}" from the client's input.
-
-YOUR RESPONSE (just the therapist's words, 1-2 sentences - elaborate with options like Dr. Q):"""
+        # Load template from config
+        template = self.prompt_loader.get_prompt('dialogue_agent', 'emotion_to_body')
+        return template.format(
+            emotion_content=emotion_content,
+            client_input=client_input,
+            rag_examples=rag_examples_text
+        )
 
     def _construct_what_else_prompt(self, client_input: str, session_state: TRTSessionState, rag_examples: list) -> str:
         """Gracefully ask what else after body location - don't force details"""
@@ -1297,18 +1418,12 @@ YOUR RESPONSE (just the therapist's words, 1-2 sentences - elaborate with option
                 if doctor_response:
                     rag_examples_text += f"{i}. \"{doctor_response}\"\n"
 
-        return f"""You are Dr. Q. Client gave body awareness.
-
-CLIENT: "{client_input}"
-
-{rag_examples_text}
-
-Dr. Q's style:
-- "What else comes to mind?"
-- "What else are you noticing?"
-- "Yeah. What else would be useful for me to know?"
-
-YOUR RESPONSE (just the therapist's words, 1-2 sentences):"""
+        # Load template from config
+        template = self.prompt_loader.get_prompt('dialogue_agent', 'what_else_inquiry')
+        return template.format(
+            client_input=client_input,
+            rag_examples=rag_examples_text
+        )
 
     def _construct_sensation_quality_prompt(self, client_input: str, session_state: TRTSessionState, rag_examples: list) -> str:
         """Ask about sensation quality when client mentioned sensation words like hurt, pain, ache"""
@@ -1333,34 +1448,20 @@ YOUR RESPONSE (just the therapist's words, 1-2 sentences):"""
                 if doctor_response:
                     rag_examples_text += f"{i}. \"{doctor_response}\"\n"
 
-        return f"""You are Dr. Q. Client mentioned body location and sensation word.
-
-CLIENT: "{client_input}"
-
-{rag_examples_text}
-
-Dr. Q's style (ELABORATIVE - reference body part and give multiple examples):
-- "What kind of sensation is it in {detected_body_part}? Is it achy, stabbing, pressure?"
-- "What does that feel like in {detected_body_part}? Tight? Heavy? Sharp?"
-- "What kind of hurt is it in {detected_body_part}? Achy? Dull? Burning?"
-
-CRITICAL: Use the detected body part "{detected_body_part}" and provide multiple sensation examples (achy, tight, stabbing, pressure, etc.)
-
-YOUR RESPONSE (just the therapist's words, 1-2 sentences - elaborate with examples like Dr. Q):"""
+        # Load template from config
+        template = self.prompt_loader.get_prompt('dialogue_agent', 'sensation_quality')
+        return template.format(
+            client_input=client_input,
+            rag_examples=rag_examples_text,
+            body_part=detected_body_part
+        )
 
     def _construct_present_moment_prompt(self, client_input: str, session_state: TRTSessionState, rag_examples: list) -> str:
         """Simple present moment grounding after exploration"""
 
-        return f"""You are Dr. Q. Client shared body awareness. Now ground them in present moment.
-
-CLIENT: "{client_input}"
-
-Dr. Q's style:
-- "Got it. How are you feeling NOW?"
-- "Okay. How are you feeling NOW?"
-- "Yeah. How are you feeling NOW?"
-
-YOUR RESPONSE (just the therapist's words, 1 sentence):"""
+        # Load template from config
+        template = self.prompt_loader.get_prompt('dialogue_agent', 'present_moment')
+        return template.format(client_input=client_input)
 
     def _construct_body_location_followup_prompt(self, client_input: str, session_state: TRTSessionState, rag_examples: list) -> str:
         """Focused prompt when client just provided body location"""
@@ -1374,18 +1475,12 @@ YOUR RESPONSE (just the therapist's words, 1 sentence):"""
                 if doctor_response:
                     rag_examples_text += f"{i}. \"{doctor_response}\"\n"
 
-        return f"""You are Dr. Q. Client just told you WHERE they feel it.
-
-CLIENT: "{client_input}"
-
-{rag_examples_text}
-
-Dr. Q's style:
-- "What kind of sensation?"
-- "Okay. What kind of sensation is it? Ache? Tight?"
-- "What does it feel like? Pressure? An ache?"
-
-YOUR RESPONSE (just the therapist's words, 1 sentence):"""
+        # Load template from config
+        template = self.prompt_loader.get_prompt('dialogue_agent', 'body_location_followup')
+        return template.format(
+            client_input=client_input,
+            rag_examples=rag_examples_text
+        )
 
     def _construct_sensation_followup_prompt(self, client_input: str, session_state: TRTSessionState, rag_examples: list) -> str:
         """Focused prompt when client just provided sensation"""
@@ -1395,27 +1490,12 @@ YOUR RESPONSE (just the therapist's words, 1 sentence):"""
 
         if not anything_else_asked:
             # First time after sensation - ask if there's more to share
-            return f"""You are Dr. Q. Client described sensation.
-
-CLIENT: "{client_input}"
-
-Dr. Q's style:
-- "Got it. What else comes to mind?"
-- "Okay. What else are you noticing?"
-- "Yeah. What else would be useful for me to know?"
-
-YOUR RESPONSE (just the therapist's words, 1-2 sentences):"""
+            template = self.prompt_loader.get_prompt('dialogue_agent', 'sensation_followup')
+            return template.format(client_input=client_input)
         else:
             # Already asked "What else?" - now move to present moment
-            return f"""You are Dr. Q. Time for present moment grounding.
-
-CLIENT: "{client_input}"
-
-Dr. Q's style:
-- "Got it. How are you feeling NOW?"
-- "Okay. How are you feeling NOW?"
-
-YOUR RESPONSE (just the therapist's words, 1 sentence):"""
+            template = self.prompt_loader.get_prompt('dialogue_agent', 'sensation_to_present')
+            return template.format(client_input=client_input)
 
     def _construct_problem_to_body_prompt(self, client_input: str, session_state: TRTSessionState) -> str:
         """Focused prompt when client mentioned a problem - shift to body IMMEDIATELY"""
@@ -1431,28 +1511,19 @@ YOUR RESPONSE (just the therapist's words, 1 sentence):"""
                 detected_problem = word
                 break
 
-        return f"""You are Dr. Q. Client mentioned problem/stress.
-
-CLIENT: "{client_input}"
-
-Dr. Q's style:
-- "Where do you feel that {detected_problem} in your body?"
-- "Where do you notice that in your body?"
-
-YOUR RESPONSE (just the therapist's words, 1 sentence):"""
+        # Load template from config
+        template = self.prompt_loader.get_prompt('dialogue_agent', 'problem_to_body')
+        return template.format(
+            client_input=client_input,
+            detected_problem=detected_problem
+        )
 
     def _construct_initial_body_location_prompt(self, client_input: str, session_state: TRTSessionState) -> str:
         """Focused prompt for initial body location question"""
 
-        return f"""You are Dr. Q. Client mentioned problem/feeling.
-
-CLIENT: "{client_input}"
-
-Dr. Q's style:
-- "Where do you feel that in your body?"
-- "Where do you notice that in your body?"
-
-YOUR RESPONSE (just the therapist's words, 1 sentence):"""
+        # Load template from config
+        template = self.prompt_loader.get_prompt('dialogue_agent', 'initial_body_location')
+        return template.format(client_input=client_input)
 
     def _construct_general_dialogue_prompt(self, client_input: str, navigation_output: dict,
                                  rag_examples: list, session_state: TRTSessionState) -> str:
@@ -1494,133 +1565,21 @@ YOUR RESPONSE (just the therapist's words, 1 sentence):"""
                     problem_question_already_asked = True
                     break
 
-        prompt = f"""You are Dr. Q, a master TRT therapist. Generate ONE short therapeutic response (1-2 sentences max).
-
-CLIENT JUST SAID: "{client_input}"
-
-CURRENT STAGE: {current_substate}
-CURRENT SITUATION: {situation}
-GOAL ALREADY STATED: {goal_already_stated}
-GOAL CONTENT: {goal if goal else "Not yet stated"}
-PROBLEM QUESTION ALREADY ASKED: {problem_question_already_asked}
-
-CRITICAL - WHAT CLIENT JUST PROVIDED:
-- Last info type: {last_info_provided}
-- Body location given: {body_location_provided}
-- Sensation described: {body_sensation_described}
-
-DR. Q EXAMPLES - STUDY THESE CAREFULLY AND MATCH HIS EXACT STYLE:
-{rag_examples_text}
-
-CRITICAL INSTRUCTION:
-The examples above show Dr. Q's ACTUAL responses from real sessions.
-ADAPT his exact phrasing, warmth, and simplicity.
-Use similar sentence structures and word choices.
-Match his natural, conversational tone.
-DO NOT add clinical language or formal phrasing.
-
-DR. Q'S NATURAL STYLE - BE CONVERSATIONAL:
-- Use warm acknowledgments: "Yeah", "Got it", "That's right", "Okay"
-- Sound natural, not clinical: "So before we get started..." not "State your goal"
-- Ask multiple variations when exploring: "What do you want our time to focus on? What do we want to get better for you? How do you want to be when we're done?"
-- Use "you know", "right" for rapport (but don't overdo it)
-
-DR. Q'S RULES (CRITICAL - FOLLOW EXACTLY):
-
-1. **CRITICAL: CHECK WHAT CLIENT JUST PROVIDED AND ASK THE NEXT LOGICAL QUESTION**
-   - If Last info type = "body_location" (client said "in my head", "in my chest", etc.):
-     → Client JUST GAVE location! DON'T ask "where do you feel that" again!
-     → NEXT STEP: Ask about sensation type: "What kind of sensation? Ache? Tight? Pressure?"
-   - If Last info type = "sensation_quality" (client said "tight", "ache", "heavy", etc.):
-     → Client JUST DESCRIBED sensation! DON'T ask "what kind of sensation" again!
-     → NEXT STEP: Affirm ("That's right") and ask "How are you feeling NOW?"
-   - If Last info type = "affirmation" (client said "yes", "right", etc.):
-     → Client CONFIRMED! Move to next stage of exploration
-
-2. NEVER ASK SAME QUESTION TWICE
-   - If Body location given = True → NEVER ask "Where do you feel that?"
-   - If Sensation described = True → NEVER ask "What kind of sensation?"
-   - Always move FORWARD in the sequence, never repeat
-
-3. BODY AWARENESS SEQUENCE (Dr. Q's exact flow):
-   Step 1: "Where do you feel that in your body?" → Client: "in my head"
-   Step 2: "What kind of sensation? Ache? Tight? Pressure?" → Client: "tight"
-   Step 3: "That's right. How are you feeling NOW?" → Client: "yes, right now"
-   - ACCEPT ALL ANSWERS: "smooth", "nice", "weird", "pressure" are all GOOD
-   - Goal is ENGAGEMENT in sensing, NOT precision
-   - DON'T repeat questions - each step happens ONCE
-
-4. ACCEPT ANSWERS WARMLY
-   - If client answered, say "That's right" or "Yeah" or "Got it"
-   - Then ask NEXT question, not same question
-
-5. CRITICAL: NEVER ASK ABOUT GOAL WHEN ALREADY STATED
-   - If GOAL ALREADY STATED = True, NEVER EVER ask "what do you want our time to focus on"
-   - FORBIDDEN PHRASES when goal already stated:
-     * "what do you want our time to focus on"
-     * "what do we want to get better"
-     * "So before we get started"
-   - If in Stage 1.2, you're doing problem/body exploration - stay there!
-
-6. CRITICAL: NEVER REPEAT THE PROBLEM QUESTION
-   - If PROBLEM QUESTION ALREADY ASKED = True, NEVER ask the problem question again
-   - FORBIDDEN PHRASES when problem already asked:
-     * "what's been making it hard"
-     * "what's been making it difficult"
-     * "what's been getting in the way"
-   - Instead, focus on emotion/body exploration or other therapeutic techniques
-   - If client mentions another emotion, ask about body location for that emotion
-
-7. BUILD VISION CONVERSATIONALLY (STAGE 1.1 ONLY)
-   - Acknowledge: "Got it."
-   - Summarize: "So you want to feel [their goal]."
-   - Paint picture: "I'm seeing you who's peaceful, calm, grounded."
-   - Check: "Does that make sense to you?"
-
-8. BODY QUESTIONS LIMIT: {body_q_count}/5
-   - If body_q_count >= 5: DON'T ask more body questions
-   - Accept what they said and move on
-
-9. CRITICAL: IF IN STATE 3.1 (ALPHA READINESS) - NO MORE BODY QUESTIONS!
-   - State 3.1 means body exploration is DONE
-   - Ask ONLY: "What haven't I understood? Is there more I should know?"
-   - DO NOT ask about body location, sensation, or present moment
-   - If client ready for alpha ("yes", "ready"), proceed to alpha sequence
-
-10. BE CONCISE AND NATURAL
-   - 1-2 sentences max (like Dr. Q)
-   - Sound like a real conversation, not a script
-   - Warm, present, attentive
-
-RESPONSE GUIDELINES BY DECISION:
-
-clarify_goal (STAGE 1.1 ONLY):
-→ "What do we want our time to focus on today?"
-
-build_vision (STAGE 1.1 ONLY):
-→ "Got it. So you want to feel [goal]. I'm seeing you who's [desired state], at ease, lighter. Does that make sense to you?"
-
-body_awareness_inquiry (STAGE 1.2):
-→ Step 1: "Where do you feel that in your body?"
-→ Step 2 (after location): "What kind of sensation? Ache? Tight? Heavy?"
-→ Step 3 (after sensation - ACCEPT vague!): "That's right. How are you feeling NOW?"
-
-explore_problem (STAGE 1.2):
-→ "So what's been making it hard for you?"
-→ After they mention problem: "Where do you feel that in your body?"
-
-present_moment_focus:
-→ "How are you feeling NOW?"
-
-STAGE 1.2 FLOW (when goal already stated):
-→ Client mentions problem → Ask: "Where do you feel that in your body?"
-→ Client gives location → Ask: "What kind of sensation? Ache? Tight?"
-→ Client describes sensation (ACCEPT vague!) → Ask: "How are you feeling NOW?"
-→ NEVER ask about goal again!
-
-Generate response (1-2 sentences, conversational Dr. Q style):"""
-
-        return prompt
+        # Load template from config
+        template = self.prompt_loader.get_prompt('dialogue_agent', 'general_therapeutic')
+        return template.format(
+            client_input=client_input,
+            current_substate=current_substate,
+            situation=situation,
+            goal_already_stated=goal_already_stated,
+            goal=goal if goal else "Not yet stated",
+            problem_question_already_asked=problem_question_already_asked,
+            last_info_provided=last_info_provided,
+            body_location_provided=body_location_provided,
+            body_sensation_described=body_sensation_described,
+            rag_examples=rag_examples_text,
+            body_q_count=body_q_count
+        )
 
     def _parse_dialogue_response(self, llm_response: str) -> dict:
         """Parse Ollama response and remove LLM artifacts"""

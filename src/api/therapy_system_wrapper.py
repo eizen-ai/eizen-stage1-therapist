@@ -20,9 +20,13 @@ from src.utils.embedding_and_retrieval_setup import TRTRAGSystem
 from src.utils.input_preprocessing import InputPreprocessor
 from src.agents.ollama_llm_master_planning_agent import OllamaLLMMasterPlanningAgent
 from src.agents.improved_ollama_dialogue_agent import ImprovedOllamaDialogueAgent
+from src.utils.detailed_logger import get_detailed_logger
 
 import time
 from datetime import datetime
+
+# Initialize detailed logger
+logger = get_detailed_logger("TherapySystem")
 
 
 class ImprovedOllamaTherapySystem:
@@ -85,10 +89,14 @@ class ImprovedOllamaTherapySystem:
         start_time = time.time()
 
         # Step 1: Preprocessing
+        logger.log_preprocessing_start(client_input)
         preprocessing_result = self.preprocessor.preprocess_input(client_input)
+        logger.log_preprocessing_result(preprocessing_result)
 
         # Step 2: Master Planning
+        logger.log_navigation_start(session_state)
         navigation_output = self.master_agent.make_navigation_decision(client_input, session_state)
+        logger.log_navigation_decision(navigation_output)
 
         # Track body questions
         body_question_decisions = [
@@ -115,7 +123,18 @@ class ImprovedOllamaTherapySystem:
         if session_state.body_questions_asked >= 3:
             current_sub = navigation_output.get("current_substate")
             if current_sub in ["2.1_seek", "1.2_problem_and_body", "2.2_location", "2.3_sensation"]:
+                logger.log_state_transition(
+                    from_state=current_sub,
+                    to_state="3.1_assess_readiness",
+                    trigger=f"Body question limit reached ({session_state.body_questions_asked}/3)"
+                )
                 session_state.current_substate = "3.1_assess_readiness"
+
+                # Mark cycle 1 as complete when transitioning to readiness
+                if session_state.body_enquiry_cycles == 0:
+                    session_state.body_enquiry_cycles = 1
+                    logger.info(f"✓ Body enquiry cycle 1 complete, entering readiness assessment")
+
                 navigation_output["navigation_decision"] = "assess_readiness"
                 navigation_output["current_substate"] = "3.1_assess_readiness"
                 navigation_output["situation_type"] = "readiness_for_alpha"
@@ -123,7 +142,19 @@ class ImprovedOllamaTherapySystem:
                 navigation_output["ready_for_next"] = True
 
         # Step 3: Dialogue Generation
+        logger.log_dialogue_start(
+            navigation_decision=navigation_output.get("navigation_decision", "unknown"),
+            rag_examples_count=0  # Will be updated by dialogue agent
+        )
         dialogue_output = self.dialogue_agent.generate_response(client_input, navigation_output, session_state)
+        logger.log_dialogue_output(
+            response=dialogue_output["therapeutic_response"],
+            metadata={
+                "technique_used": dialogue_output.get("technique_used"),
+                "llm_confidence": dialogue_output.get("llm_confidence"),
+                "fallback_used": dialogue_output.get("fallback_used")
+            }
+        )
 
         # Step 4: Update session
         session_state.add_exchange(
@@ -131,8 +162,10 @@ class ImprovedOllamaTherapySystem:
             therapist_response=dialogue_output["therapeutic_response"],
             navigation_output=navigation_output
         )
+        logger.log_session_update(session_state)
 
         processing_time = time.time() - start_time
+        logger.log_processing_summary(processing_time, session_state.session_id)
 
         # Return comprehensive result
         return {

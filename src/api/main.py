@@ -24,6 +24,10 @@ from src.api.models import (
 )
 from src.api.therapy_system_wrapper import ImprovedOllamaTherapySystem
 from src.utils.redis_session_manager import RedisSessionManager
+from src.utils.detailed_logger import get_detailed_logger
+
+# Initialize detailed logger
+logger = get_detailed_logger("API.Main")
 
 # ============================================================
 # FASTAPI APP INITIALIZATION
@@ -60,6 +64,20 @@ except Exception as e:
 
 # In-memory fallback (only used if Redis fails)
 active_sessions: Dict[str, Dict] = {}
+
+# ============================================================
+# GLOBAL THERAPY SYSTEM (Performance Optimization)
+# ============================================================
+# Initialize therapy system ONCE at module load instead of per-request
+# This prevents reloading RAG index and agents on every request
+
+print("🔧 Initializing global therapy system (module level)...", flush=True)
+_global_therapy_system = ImprovedOllamaTherapySystem()
+print(f"✅ Global therapy system ready: {type(_global_therapy_system).__name__}", flush=True)
+
+def get_therapy_system():
+    """Get global therapy system instance"""
+    return _global_therapy_system
 
 
 # ============================================================
@@ -163,16 +181,15 @@ async def create_session(request: SessionCreateRequest):
             # Auto-generate session ID
             session_id = create_session_id()
 
-        # Initialize therapy system for this session
-        therapy_system = ImprovedOllamaTherapySystem()
+        # Get global therapy system (shared across all sessions)
+        therapy_system = get_therapy_system()
         session_state = therapy_system.create_session(session_id)
 
-        # Store session data
+        # Store session data (therapy_system is now global, only store session_state)
         active_sessions[session_id] = {
             "session_id": session_id,
             "client_id": request.client_id,
             "metadata": request.metadata,
-            "therapy_system": therapy_system,
             "session_state": session_state,
             "created_at": datetime.now(),
             "last_interaction": datetime.now(),
@@ -212,17 +229,30 @@ async def process_input_with_session(request: ClientInputRequest):
     try:
         session_id = request.session_id
 
+        # Log endpoint input
+        logger.log_endpoint_input(
+            endpoint="/api/v1/input",
+            session_id=session_id,
+            user_input=request.user_input,
+            request_data={"metadata": request.metadata} if hasattr(request, 'metadata') else None
+        )
+
         # Check if session exists (Redis or fallback)
         session_exists = False
         if redis_manager:
             session_exists = redis_manager.session_exists(session_id)
+            logger.info(f"Session check (Redis): {session_exists}")
         else:
             session_exists = session_id in active_sessions
+            logger.info(f"Session check (Memory): {session_exists}")
+
+        # Get global therapy system (shared across all sessions)
+        therapy_system = get_therapy_system()
 
         # Create session if it doesn't exist (first call)
         if not session_exists:
-            # Initialize therapy system for this new session
-            therapy_system = ImprovedOllamaTherapySystem()
+            logger.info(f"Creating new session: {session_id}")
+            # Create new session state (lightweight)
             session_state = therapy_system.create_session(session_id)
 
             # Save to Redis or fallback to memory
@@ -234,7 +264,6 @@ async def process_input_with_session(request: ClientInputRequest):
                     "session_id": session_id,
                     "client_id": None,
                     "metadata": {"created_via": "input_endpoint"},
-                    "therapy_system": therapy_system,
                     "session_state": session_state,
                     "created_at": datetime.now(),
                     "last_interaction": datetime.now(),
@@ -242,23 +271,23 @@ async def process_input_with_session(request: ClientInputRequest):
                     "status": "active"
                 }
         else:
-            # Load existing session
+            # Load existing session state
             if redis_manager:
                 session_data = redis_manager.load_session_state(session_id)
-                therapy_system = ImprovedOllamaTherapySystem()
+                # Create session state and restore from Redis
                 session_state = therapy_system.create_session(session_id)
-                # Restore state
                 session_state.current_stage = session_data["current_stage"]
                 session_state.current_substate = session_data["current_substate"]
                 session_state.body_questions_asked = session_data["body_questions_asked"]
                 session_state.stage_1_completion = session_data["stage_1_completion"]
             else:
                 session = active_sessions[session_id]
-                therapy_system = session["therapy_system"]
                 session_state = session["session_state"]
 
         # Process client input through therapy system
+        logger.info("Processing input through therapy system...")
         result = therapy_system.process_client_input(request.user_input, session_state)
+        logger.info(f"Processing complete in {result.get('processing_time', 0):.3f}s")
 
         # Save updated state
         if redis_manager:
@@ -312,12 +341,27 @@ async def process_input_with_session(request: ClientInputRequest):
         # Check if session is complete
         if result["session_state"]["stage_1_completion"].get("ready_for_stage_2", False):
             session["status"] = "completed"
+            logger.info(f"Session {session_id} marked as completed")
+
+        # Log endpoint output
+        logger.log_endpoint_output(
+            endpoint="/api/v1/input",
+            session_id=session_id,
+            response=response.therapist_response,
+            metadata={
+                "current_substate": response.session_progress.current_substate,
+                "navigation_decision": response.navigation.decision,
+                "processing_time": result.get('processing_time', 0)
+            }
+        )
 
         return response
 
-    except HTTPException:
+    except HTTPException as http_exc:
+        logger.log_error("API Endpoint /api/v1/input", http_exc, {"session_id": session_id, "user_input": request.user_input})
         raise
     except Exception as e:
+        logger.log_error("API Endpoint /api/v1/input", e, {"session_id": session_id, "user_input": request.user_input})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process input: {str(e)}"
@@ -339,18 +383,19 @@ async def process_input_path_based(session_id: str, request: ClientInputRequest)
         TherapistResponse: Complete response with preprocessing, navigation, and progress
     """
     try:
+        # Get global therapy system (shared across all sessions)
+        therapy_system = get_therapy_system()
+
         # Auto-create session if it doesn't exist
         if session_id not in active_sessions:
-            # Initialize therapy system for this new session
-            therapy_system = ImprovedOllamaTherapySystem()
+            # Create new session state (lightweight)
             session_state = therapy_system.create_session(session_id)
 
-            # Store session data
+            # Store session data (therapy_system is now global, only store session_state)
             active_sessions[session_id] = {
                 "session_id": session_id,
                 "client_id": None,  # Not needed in simplified flow
                 "metadata": {"auto_created": True},
-                "therapy_system": therapy_system,
                 "session_state": session_state,
                 "created_at": datetime.now(),
                 "last_interaction": datetime.now(),
@@ -358,9 +403,8 @@ async def process_input_path_based(session_id: str, request: ClientInputRequest)
                 "status": "active"
             }
 
-        # Retrieve session
+        # Retrieve session state
         session = active_sessions[session_id]
-        therapy_system = session["therapy_system"]
         session_state = session["session_state"]
 
         # Process client input through therapy system
