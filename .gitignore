@@ -67,6 +67,10 @@ temp/
 *.backup
 *.bak
 *.tar.gz
+backup.sh
+restore.sh
+BACKUP_*.txt
+BACKUP_*.md
 
 # Session logs (keep directory structure)
 logs/

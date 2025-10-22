@@ -14,7 +14,13 @@ This is a local AI-powered therapeutic system implementing **Stage 1** of Dr. Q'
 - Alpha state induction for nervous system regulation
 - Preparation for trauma processing (Stage 2)
 
-**Status:** ✅ All critical fixes implemented. System ready for QA testing and pilot deployment.
+**Status:** ✅ Production-ready with centralized prompt system, detailed logging, and comprehensive documentation.
+
+**Latest Updates (Oct 2025):**
+- ✅ Centralized prompt configuration system (`config/prompts/`)
+- ✅ Detailed structured logging for debugging and monitoring
+- ✅ Prompt loader utility for easy prompt management
+- ✅ All critical fixes implemented and tested
 
 ---
 
@@ -38,10 +44,12 @@ These documents explain:
 
 ### ✨ Dr. Q's Complete Methodology
 - **31-state CSV-driven state machine** covering all therapeutic interactions
+- **Centralized prompt system** - All prompts in `config/prompts/system_prompts.json` for easy maintenance
 - **Psycho-education** using zebra/lion brain metaphor before problem exploration
 - **MAX 3 body questions** with escape routes to alpha sequence
 - **Problem identification** using smart conversation history analysis
 - **Safety-first design** with self-harm detection and crisis protocols
+- **Detailed logging** - Structured logs for debugging and monitoring
 
 ### 🧠 AI Architecture
 - **Master Planning Agent** - Navigation decisions with strict rule overrides
@@ -91,7 +99,9 @@ Therapist2/
 │   │   ├── language_techniques.py          # Dr. Q's language patterns
 │   │   ├── engagement_tracker.py           # Engagement monitoring
 │   │   ├── no_harm_framework.py            # Safety protocols
-│   │   └── vision_language_templates.py    # Vision-building prompts
+│   │   ├── vision_language_templates.py    # Vision-building prompts
+│   │   ├── detailed_logger.py              # ✨ NEW: Structured logging system
+│   │   └── prompt_loader.py                # ✨ NEW: Centralized prompt loader
 │   └── api/                                # FastAPI REST endpoints
 │       ├── main.py                         # FastAPI application
 │       ├── models.py                       # Request/response models
@@ -99,6 +109,9 @@ Therapist2/
 │
 ├── config/                                 # Configuration files
 │   ├── STAGE1_COMPLETE.csv                 # 31-state CSV state machine
+│   ├── prompts/                            # ✨ NEW: Centralized prompt system
+│   │   ├── system_prompts.json             # All agent prompts in one place
+│   │   └── README.md                       # Prompt system documentation
 │   └── system/                             # System configuration
 │
 ├── data/                                   # Data files
@@ -150,6 +163,7 @@ Therapist2/
 │
 ├── tests/                                  # Test suite
 │   ├── test_improved_system.py             # System integration tests
+│   ├── test_detailed_logging.py            # ✨ NEW: Logging system tests
 │   └── [other test files]                  # Additional tests
 │
 ├── logs/                                   # Session logs (JSON format)
@@ -498,6 +512,6 @@ If you are experiencing a mental health crisis:
 
 ---
 
-**Last Updated:** 2025-10-14
-**Version:** 1.0 (Stage 1 Complete)
-**Status:** ✅ Ready for QA Testing
+**Last Updated:** 2025-10-22
+**Version:** 1.1 (Production Ready)
+**Status:** ✅ Production-ready with centralized prompts and detailed logging
